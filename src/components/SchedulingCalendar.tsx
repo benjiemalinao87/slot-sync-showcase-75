@@ -262,6 +262,41 @@ export function SchedulingCalendar({ salesRepEmail, salesRep, leadDetails, onBoo
         rep: salesRep
       };
 
+      // Send booking information to webhook
+      try {
+        // Format phone number to E.164 format (just digits with country code)
+        let formattedPhone = "No phone provided";
+        if (leadDetails?.phone) {
+          // Remove all non-digit characters
+          const digitsOnly = leadDetails.phone.replace(/\D/g, '');
+          
+          // If no country code (assuming US/CA), add +1
+          if (digitsOnly.length === 10) {
+            formattedPhone = `1${digitsOnly}`;
+          } else {
+            // Otherwise just use the digits
+            formattedPhone = digitsOnly;
+          }
+        }
+
+        await submitToWebhook({
+          appointmentDate: selectedDate.toISOString(),
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+          customerName: bookingName,
+          customerEmail: bookingEmail,
+          customerPhone: formattedPhone,
+          notes: bookingNotes,
+          salesRepName: salesRep?.name || "Unknown",
+          salesRepEmail: salesRep?.email || calendarIdToUse || "Unknown",
+          slot: selectedSlot
+        });
+        console.log("Webhook notification sent successfully");
+      } catch (webhookError) {
+        console.error("Failed to send webhook notification:", webhookError);
+        // Don't stop the booking process if webhook fails
+      }
+
       // Store the booking details for the confirmation page - serialize dates properly
       sessionStorage.setItem('lastBooking', JSON.stringify({
         date: selectedDate.toISOString(),

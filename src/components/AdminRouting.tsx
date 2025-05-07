@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from 'date-fns';
 import EditablePercentage from './EditablePercentage';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import ToggleActive from './ToggleActive';
 
 type SalesRep = {
   id: string;
@@ -34,6 +35,7 @@ type SalesRep = {
   bio?: string;
   experience?: string;
   image_url?: string;
+  is_active?: boolean;
 };
 
 type CityRule = {
@@ -622,15 +624,26 @@ const AdminRouting = () => {
                         <TableRow>
                           <TableHead>Name</TableHead>
                           <TableHead>Email</TableHead>
+                          <TableHead>Active</TableHead>
                           <TableHead className="text-right">Percentage</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {salesReps.map((rep) => (
-                          <TableRow key={rep.id}>
+                          <TableRow 
+                            key={rep.id}
+                            className={rep.is_active === false ? 'opacity-50' : ''}
+                          >
                             <TableCell>{rep.name}</TableCell>
                             <TableCell className="truncate">{rep.email}</TableCell>
+                            <TableCell>
+                              <ToggleActive 
+                                repId={rep.id} 
+                                isActive={rep.is_active !== false} 
+                                onUpdate={loadSalesReps}
+                              />
+                            </TableCell>
                             <TableCell className="text-right">
                               <EditablePercentage 
                                 value={rep.percentage || 0} 

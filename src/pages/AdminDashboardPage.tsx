@@ -45,6 +45,7 @@ import EditablePercentage from '@/components/EditablePercentage';
 import EditSalesRepDetails from '@/components/EditSalesRepDetails';
 import RoutingStatsGraph from '@/components/RoutingStatsGraph';
 import EditRoutingRule from '@/components/EditRoutingRule';
+import ToggleActive from '@/components/ToggleActive';
 
 type SalesRep = {
   id: string;
@@ -56,6 +57,7 @@ type SalesRep = {
   image_url?: string;
   rating?: number;
   review_count?: number;
+  is_active?: boolean;
 };
 
 type CityRule = {
@@ -225,7 +227,8 @@ const AdminDashboardPage = () => {
           email: newEmail,
           bio: newBio,
           experience: newExperience,
-          image_url: newImageUrl
+          image_url: newImageUrl,
+          is_active: true
         }])
         .select()
         .single();
@@ -477,15 +480,26 @@ const AdminDashboardPage = () => {
                         <TableRow>
                           <TableHead>Name</TableHead>
                           <TableHead>Email</TableHead>
+                          <TableHead>Active</TableHead>
                           <TableHead className="text-right">Percentage</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {salesReps.map((rep) => (
-                          <TableRow key={rep.id}>
+                          <TableRow 
+                            key={rep.id}
+                            className={rep.is_active === false ? 'opacity-50' : ''}
+                          >
                             <TableCell>{rep.name}</TableCell>
                             <TableCell>{rep.email}</TableCell>
+                            <TableCell>
+                              <ToggleActive 
+                                repId={rep.id} 
+                                isActive={rep.is_active !== false} 
+                                onUpdate={loadSalesReps}
+                              />
+                            </TableCell>
                             <TableCell className="text-right">
                               <EditablePercentage 
                                 value={rep.percentage || 0} 

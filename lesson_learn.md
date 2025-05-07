@@ -903,3 +903,138 @@
    - Log parameter values at each step to trace flow
    - Verify that URL parameters override defaults correctly
    - Test with both present and absent parameters
+
+## Webhook Integration for Booking Confirmations
+
+### Issue: Sales Rep Information Missing in Webhook
+1. **Problem Description**
+   - Webhook for booking confirmations was not sending sales rep name and email information
+   - Webhook was being called, but critical information about sales representatives was missing
+   - Without sales rep information, the webhook receiver couldn't route notifications properly
+
+2. **Solution Implemented**
+   - Added webhook call in the `handleConfirmBooking` function of `SchedulingCalendar.tsx`
+   - Included complete sales rep information (name and email) in the webhook payload
+   - Placed webhook call after successful calendar booking but before navigation
+   - Added proper error handling to prevent webhook failures from blocking booking flow
+   - Implemented detailed logging for webhook success/failure
+
+3. **Best Practices for Webhook Integration**
+   - Place webhook calls after critical operations are complete
+   - Include all necessary data in the webhook payload for downstream processing
+   - Implement proper error handling to prevent webhook failures from affecting core functionality
+   - Use try/catch blocks to isolate webhook errors from the main application flow
+   - Log webhook successes and failures for debugging and monitoring
+   - Use consistent data structure in webhook payloads
+
+4. **Implementation Details**
+   - Added new webhook call with comprehensive booking information:
+     * Appointment date and time (start/end)
+     * Customer details (name, email, notes)
+     * Sales rep information (name, email)
+     * Slot details for reference
+   - Used fallback values for missing information
+   - Added non-blocking error handling to prevent webhook failures from affecting booking experience
+   - Maintained consistent data structure for webhook consumers
+
+## Webhook Payload Enhancement
+
+### Issue: Phone Number Formatting for Webhook
+1. **Problem Description**
+   - The webhook payload for booking confirmations was missing the customer's phone number
+   - Phone numbers needed to be standardized in E.164 format for consistency
+   - Different input formats (with dashes, parentheses, etc.) needed to be normalized
+   - Country code needed to be included for international compatibility
+
+2. **Solution Implemented**
+   - Added `customerPhone` field to the webhook payload in `handleConfirmBooking` function
+   - Implemented phone number formatting to E.164 standard:
+     * Removed all non-digit characters (dashes, parentheses, spaces)
+     * Added country code "1" for 10-digit US/CA numbers if missing
+     * Preserved any existing country codes for international numbers
+     * Example: "(626) 553-9586" → "16265539586"
+   - Provided a fallback message "No phone provided" if no phone number is available
+
+3. **Best Practices for Phone Number Formatting**
+   - Use E.164 standard for international compatibility (country code + digits)
+   - Strip all formatting characters before sending to APIs or webhooks
+   - Handle both formatted inputs (555-123-4567) and raw inputs (5551234567)
+   - Always provide fallback values for optional fields
+   - Apply consistent formatting rules across your application
+
+## Sales Rep Active/Inactive Toggle Implementation
+
+### Issue: Need to Disable Sales Reps Without Deleting Them
+1. **Problem Description**
+   - Sales reps needed to be temporarily removed from routing without losing their data
+   - Previously, sales reps had to be completely deleted to remove them from routing
+   - All historical information would be lost when deleting a sales rep
+   - No way to quickly reactivate reps when needed
+
+2. **Solution Implemented**
+   - Added `is_active` Boolean field to the `sales_reps` table
+   - Created a toggle switch UI component to easily change active status
+   - Set default value to `true` for backward compatibility
+   - Added visual indicators for inactive reps in admin interface
+   - Modified database queries to only consider active reps for routing
+   - Created SQL functions to enforce active status in all routing calculations
+
+3. **Technical Implementation Details**
+   - Database Changes:
+     * Added `is_active` column with DEFAULT TRUE for existing records
+     * Created a SQL function `get_active_sales_reps_for_routing()` to facilitate backend queries
+     * Modified RLS policies to enforce active status constraints
+   
+   - Frontend Changes:
+     * Created a reusable `ToggleActive` component with clear visual feedback
+     * Added active status indicator column to sales rep tables
+     * Applied visual styling to inactive rows (reduced opacity)
+     * Updated all type definitions to include the `is_active` field
+     * Enhanced existing code to respect active status
+
+   - Backend Changes:
+     * Modified Edge Function to filter by active status
+     * Updated all SQL queries to include active status conditions
+     * Used RPC for complex filtering logic
+
+4. **Best Practices for Feature Implementation**
+   - Always provide an easy-to-use toggle UI for boolean features
+   - Include visual indicators for status (both in toggle and row appearance)
+   - Ensure all components respect the feature's intent
+   - Add default values for backward compatibility
+   - Update type definitions across the entire application
+   - Use database functions for complex filtering logic
+   - Document all changes in lesson_learn.md for future reference
+
+## Fixing Active Status Filtering in Routing
+
+### Issue: Inactive Sales Reps Still Being Selected
+1. **Problem Description**
+   - Sales reps marked as inactive in the UI were still being selected by the routing algorithm
+   - Setting a rep as inactive via toggle didn't prevent them from being matched with leads
+   - The active status flag was being ignored during some parts of the routing process
+   - Database functions weren't properly filtering by is_active=true
+
+2. **Root Cause**
+   - The routing process had three separate entry points that each needed filtering:
+     * Source-based routing wasn't checking sales rep active status
+     * City-based routing checked rep status after selecting a rule
+     * Percentage-based routing RPC function needed explicit active status filtering
+   - The SQL function for selecting active reps needed to be updated
+   - Some database queries were selecting reps directly without checking is_active
+
+3. **Solution Implemented**
+   - Added explicit is_active=true filters to all database queries in the edge function
+   - Created a database function that properly filters inactive reps from routing rules
+   - Updated edge function to fetch and filter reps with active status early 
+   - Added detailed logging to identify when inactive reps are being considered
+   - Fixed inconsistency between UI state and database state
+   - Deactivated routing rules for inactive sales reps
+
+4. **Best Practices for Status Filtering**
+   - Use database-level filtering whenever possible rather than client-side filtering
+   - Create dedicated SQL functions that enforce business rules consistently
+   - Add logging to track status checks and decision points
+   - Ensure all query paths include the required filters
+   - Test edge cases where inactive resources might still be selected
+   - Keep UI state and database state consistent with database triggers

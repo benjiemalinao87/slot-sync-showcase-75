@@ -238,6 +238,27 @@ serve(async (req) => {
       }
     };
 
+    // Add logging to check which reps are being considered
+    const logAvailableReps = async () => {
+      try {
+        const { data: activeReps, error } = await supabaseClient
+          .from('sales_reps')
+          .select('id, name, email, is_active')
+          .eq('is_active', true);
+          
+        if (error) {
+          console.error('Error fetching active reps:', error);
+        } else {
+          console.log('Currently active sales reps available for routing:', activeReps);
+        }
+      } catch (err) {
+        console.error('Error in logAvailableReps:', err);
+      }
+    };
+    
+    // Call the function to log active reps
+    await logAvailableReps();
+
     // First check if leadSource was directly provided in the request
     if (leadSource) {
       console.log('Using lead source provided in request:', leadSource);
@@ -245,7 +266,7 @@ serve(async (req) => {
       // Get source-based rules
       const { data: sourceRules, error: sourceRuleError } = await supabaseClient
         .from('city_routing_rules')
-        .select('*, sales_rep:sales_rep_id(*)')
+        .select('*, sales_rep:sales_rep_id(id, name, email, is_active)')
         .eq('is_active', true)
         .is('city', null)
         .not('lead_source', 'is', null);
@@ -255,8 +276,12 @@ serve(async (req) => {
       } else {
         console.log('Available source rules:', sourceRules);
         
+        // Filter out rules where the sales rep is inactive
+        const activeSourceRules = sourceRules.filter(rule => rule.sales_rep?.is_active === true);
+        console.log('Active source rules after filtering:', activeSourceRules);
+        
         // Find matching rule with proper case-insensitive comparison
-        const matchingRule = sourceRules.find(rule => {
+        const matchingRule = activeSourceRules.find(rule => {
           const ruleSource = rule.lead_source ? rule.lead_source.toLowerCase() : null;
           const ruleStatus = rule.status || rule.lead_status;
           const ruleStatusLower = ruleStatus ? ruleStatus.toLowerCase() : null;
@@ -380,52 +405,53 @@ serve(async (req) => {
     }
 
     if (city) {
-      const { data: cityRule, error: cityRuleError } = await supabaseClient
+      // First get all potential rules
+      const { data: cityRules, error: cityRulesError } = await supabaseClient
         .from('city_routing_rules')
-        .select('sales_rep_id')
+        .select('*, sales_rep:sales_rep_id(id, name, email, is_active)')
         .eq('city', city)
-        .eq('is_active', true)
-        .maybeSingle();
+        .eq('is_active', true);
 
-      if (cityRuleError) {
-        console.error('Error fetching city routing rule:', cityRuleError);
-      } else if (cityRule) {
-        console.log(`Found city rule for ${city}, assigning to rep ID: ${cityRule.sales_rep_id}`);
+      if (cityRulesError) {
+        console.error('Error fetching city routing rules:', cityRulesError);
+      } else if (cityRules && cityRules.length > 0) {
+        // Filter to only rules with active sales reps
+        const activeCityRules = cityRules.filter(rule => rule.sales_rep?.is_active === true);
+        console.log(`Found ${cityRules.length} city rules for ${city}, ${activeCityRules.length} with active sales reps`);
         
-        const { data: salesRep, error: salesRepError } = await supabaseClient
-          .from('sales_reps')
-          .select('*')
-          .eq('id', cityRule.sales_rep_id)
-          .single();
+        if (activeCityRules.length > 0) {
+          const selectedRule = activeCityRules[0];
+          const salesRep = selectedRule.sales_rep;
+          
+          console.log(`Selected active sales rep for city ${city}:`, salesRep);
 
-        if (salesRepError) throw salesRepError;
+          await logRoutingDetails('city', salesRep, {
+            city,
+            email,
+            routingCriteria: selectedRule
+          });
 
-        await logRoutingDetails('city', salesRep, {
-          city,
-          email,
-          routingCriteria: cityRule
-        });
-
-        return new Response(
-          JSON.stringify({ 
-            salesRep,
-            routingMethod: 'city',
-            city
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      } else {
-        console.log(`No city rule found for ${city}, falling back to percentage-based routing`);
+          return new Response(
+            JSON.stringify({ 
+              salesRep,
+              routingMethod: 'city',
+              city
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       }
+      
+      console.log(`No active city rule found for ${city}, falling back to percentage-based routing`);
     }
 
+    // Modify the percentage-based routing section to use our new function
     // Percentage-based routing as fallback
-    // Fetch active routing rules with non-zero percentages
+    // Fetch active routing rules with non-zero percentages AND only for active sales reps
+    console.log('Using percentage-based routing as fallback');
+    
     const { data: rules, error: rulesError } = await supabaseClient
-      .from('routing_rules')
-      .select('sales_rep_id, percentage')
-      .eq('is_active', true)
-      .gt('percentage', 0);  // Only consider rules with percentage > 0
+      .rpc('get_active_sales_reps_for_routing');
 
     if (rulesError) {
       console.error('Error fetching routing rules:', rulesError);
@@ -437,7 +463,7 @@ serve(async (req) => {
       throw new Error('No active routing rules found');
     }
 
-    console.log('Available percentage rules:', rules);
+    console.log('Available percentage rules for active sales reps:', rules);
 
     const randomNum = Math.random() * 100;
     console.log(`Generated random number for percentage routing: ${randomNum}`);
@@ -472,6 +498,7 @@ serve(async (req) => {
       .from('sales_reps')
       .select('*')
       .eq('id', selectedRepId)
+      .eq('is_active', true)
       .single();
 
     if (salesRepError) {

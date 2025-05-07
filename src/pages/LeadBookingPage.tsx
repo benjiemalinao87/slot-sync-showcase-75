@@ -20,6 +20,7 @@ type SalesRep = {
   calendar_url?: string;
   rating?: number;
   review_count?: number;
+  is_active?: boolean;
 };
 
 const LeadBookingPage = () => {
