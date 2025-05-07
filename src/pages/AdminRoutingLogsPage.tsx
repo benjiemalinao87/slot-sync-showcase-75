@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -20,6 +19,7 @@ import {
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Loader } from 'lucide-react';
+import RoutingStatsGraph from '@/components/RoutingStatsGraph';
 
 type RoutingLog = {
   id: string;
@@ -110,7 +110,9 @@ const AdminRoutingLogsPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 space-y-8">
+      <RoutingStatsGraph />
+      
       <Card>
         <CardHeader>
           <CardTitle>Routing Logs</CardTitle>

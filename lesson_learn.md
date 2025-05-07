@@ -712,3 +712,109 @@
    - Keyboard navigation improvements
    - Focus management between steps
    - ARIA attributes for form structure
+
+## Routing Statistics Graph Implementation
+
+### Key Lessons
+1. **Data Visualization Best Practices**
+   - Use stacked bar charts for comparing distribution across categories
+   - Transform raw data into appropriate format for visualization library
+   - Consider color accessibility when choosing chart colors
+   - Implement responsive design for different screen sizes
+   - Add proper loading states and error handling
+
+2. **Component Integration**
+   - Place visualization components where users naturally look for them
+   - Consider the navigation flow when deciding component placement
+   - Keep visualization components focused and reusable
+   - Use proper type definitions for data props
+   - Implement error boundaries for visualization components
+
+3. **Performance Considerations**
+   - Minimize unnecessary re-renders in chart components
+   - Use proper data memoization for complex transformations
+   - Consider lazy loading for visualization libraries
+   - Implement efficient data aggregation methods
+   - Monitor rendering performance with React DevTools
+
+4. **User Experience**
+   - Make chart labels readable with proper angle and spacing
+   - Provide clear visual feedback for loading and error states
+   - Consider mobile viewing experience in chart design
+   - Use consistent colors and styles across visualizations
+   - Add helpful tooltips for data point interactions
+
+### Common Issues and Solutions
+1. **Chart Rendering Issues**
+   - Problem: Chart not appearing in expected location
+   - Solution: Verify component mounting and proper data flow
+   - Check parent container dimensions and styling
+   - Ensure data transformation produces expected format
+   - Add proper error boundaries and fallback UI
+
+2. **Data Transformation**
+   - Problem: Raw data not suitable for visualization
+   - Solution: Create clear data transformation functions
+   - Validate data structure before transformation
+   - Handle edge cases and missing data gracefully
+   - Document expected data formats clearly
+
+3. **Mobile Responsiveness**
+   - Problem: Charts not scaling properly on mobile
+   - Solution: Use responsive container components
+   - Implement proper breakpoints for different screens
+   - Test on various device sizes
+   - Consider alternative layouts for small screens
+
+## Multiple Chart Types in Data Visualization
+
+### Key Lessons
+1. **Chart Type Selection**
+   - Use pie charts for showing distribution/composition of a whole
+   - Use bar charts for comparing quantities across categories
+   - Consider the data story you want to tell when choosing chart types
+   - Combine different chart types to provide multiple perspectives
+   - Keep visualizations focused and purpose-driven
+
+2. **Data Processing**
+   - Transform raw data differently for each chart type
+   - Handle null/undefined values consistently
+   - Use clear naming conventions for data properties
+   - Implement efficient data aggregation methods
+   - Cache processed data when possible
+
+3. **Layout Considerations**
+   - Use grid layouts for organizing multiple charts
+   - Ensure proper spacing between visualizations
+   - Make charts responsive to container size
+   - Consider mobile viewing experience
+   - Maintain consistent heights for visual balance
+
+4. **Date Range Filtering**
+   - Implement clear date range options
+   - Use consistent date manipulation functions
+   - Cache filtered results when practical
+   - Show loading states during data updates
+   - Maintain filter state between renders
+
+### Common Issues and Solutions
+1. **Chart Sizing**
+   - Problem: Charts not resizing properly
+   - Solution: Use ResponsiveContainer and fixed-height containers
+   - Set explicit dimensions for chart containers
+   - Test different screen sizes
+   - Handle resize events appropriately
+
+2. **Data Updates**
+   - Problem: Charts not updating with new data
+   - Solution: Properly handle useEffect dependencies
+   - Clear existing data before updates
+   - Show loading states during updates
+   - Handle error cases gracefully
+
+3. **Performance**
+   - Problem: Slow updates with large datasets
+   - Solution: Implement data caching
+   - Optimize data transformation functions
+   - Use memoization for expensive calculations
+   - Batch state updates when possible

@@ -43,6 +43,7 @@ import {
 import { format } from 'date-fns';
 import EditablePercentage from '@/components/EditablePercentage';
 import EditSalesRepDetails from '@/components/EditSalesRepDetails';
+import RoutingStatsGraph from '@/components/RoutingStatsGraph';
 
 type SalesRep = {
   id: string;
@@ -310,7 +311,6 @@ const AdminDashboardPage = () => {
                 <TabsTrigger value="city">City-based</TabsTrigger>
                 <TabsTrigger value="source">Source-based</TabsTrigger>
                 <TabsTrigger value="logs">Routing Logs</TabsTrigger>
-                <TabsTrigger value="calendar">Calendar Config</TabsTrigger>
               </TabsList>
 
               <TabsContent value="percentage" className="space-y-6">
@@ -567,6 +567,15 @@ const AdminDashboardPage = () => {
               <TabsContent value="logs" className="space-y-6">
                 <Card>
                   <CardHeader>
+                    <CardTitle>Routing Analytics</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <RoutingStatsGraph />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
                     <CardTitle>Recent Routing Logs</CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -599,32 +608,6 @@ const AdminDashboardPage = () => {
                         ))}
                       </TableBody>
                     </Table>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="calendar" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Google Calendar Configuration</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Alert>
-                      <Key className="h-4 w-4" />
-                      <AlertTitle>Refresh Token Status</AlertTitle>
-                      <AlertDescription>
-                        The refresh token is required for Google Calendar integration to work properly. 
-                        Please use the Google Calendar Auth flow to obtain a new refresh token.
-                      </AlertDescription>
-                    </Alert>
-
-                    <Button 
-                      className="w-full"
-                      onClick={() => navigate('/admin/google-auth')}
-                    >
-                      <Key className="h-4 w-4 mr-2" />
-                      Start Google Calendar Auth Flow
-                    </Button>
                   </CardContent>
                 </Card>
               </TabsContent>
