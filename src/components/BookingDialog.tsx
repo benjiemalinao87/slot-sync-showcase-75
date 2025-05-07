@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { TimeSlot, ExtendedBookingDetails } from "@/types/calendar";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { useSearchParams } from 'react-router-dom';
 
 interface BookingDialogProps {
   isOpen: boolean;
@@ -20,6 +22,8 @@ interface BookingDialogProps {
     city?: string;
     interest?: string;
     notes?: string;
+    leadStatus?: string;
+    source?: string;
   };
 }
 
@@ -31,6 +35,8 @@ interface BookingFormData {
   city?: string;
   interest: string;
   notes?: string;
+  leadStatus?: string;
+  source?: string;
 }
 
 export const BookingDialog = ({ 
@@ -41,6 +47,7 @@ export const BookingDialog = ({
   onSubmit,
   initialValues = {} 
 }: BookingDialogProps) => {
+  const [searchParams] = useSearchParams();
   const [currentStep, setCurrentStep] = useState(1);
   const [firstName, setFirstName] = useState(initialValues.firstName || '');
   const [lastName, setLastName] = useState(initialValues.lastName || '');
@@ -49,6 +56,8 @@ export const BookingDialog = ({
   const [city, setCity] = useState(initialValues.city || '');
   const [interest, setInterest] = useState(initialValues.interest || '');
   const [notes, setNotes] = useState(initialValues.notes || '');
+  const [leadStatus, setLeadStatus] = useState(searchParams.get('lead_status') || 'New');
+  const [source, setSource] = useState(searchParams.get('source') || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -59,7 +68,9 @@ export const BookingDialog = ({
     setCity(initialValues.city || '');
     setInterest(initialValues.interest || '');
     setNotes(initialValues.notes || '');
-  }, [initialValues]);
+    setLeadStatus(searchParams.get('lead_status') || 'New');
+    setSource(searchParams.get('source') || '');
+  }, [initialValues, searchParams]);
 
   useEffect(() => {
     if (isOpen) {
@@ -79,7 +90,9 @@ export const BookingDialog = ({
         phone,
         city: city || undefined,
         interest,
-        notes
+        notes,
+        leadStatus,
+        source
       };
 
       if (onSubmit) {
@@ -117,6 +130,27 @@ export const BookingDialog = ({
       case 1:
         return (
           <div className="space-y-5">
+            <div className="flex justify-between items-center mb-4">
+              <DialogTitle>Book Appointment</DialogTitle>
+              <div className="flex gap-2">
+                {leadStatus && (
+                  <Badge 
+                    variant={leadStatus.toLowerCase() as any} 
+                    className="capitalize"
+                  >
+                    {leadStatus}
+                  </Badge>
+                )}
+                {source && (
+                  <Badge 
+                    variant="outline"
+                    className="capitalize"
+                  >
+                    {source}
+                  </Badge>
+                )}
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="firstName" className="text-gray-700 font-medium">First Name</Label>

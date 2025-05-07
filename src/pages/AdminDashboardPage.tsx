@@ -44,6 +44,7 @@ import { format } from 'date-fns';
 import EditablePercentage from '@/components/EditablePercentage';
 import EditSalesRepDetails from '@/components/EditSalesRepDetails';
 import RoutingStatsGraph from '@/components/RoutingStatsGraph';
+import EditRoutingRule from '@/components/EditRoutingRule';
 
 type SalesRep = {
   id: string;
@@ -61,6 +62,11 @@ type CityRule = {
   id: string;
   city: string;
   sales_rep_id: string;
+  status?: string | null;
+  sales_rep?: {
+    name: string;
+    email: string;
+  };
 };
 
 const AdminDashboardPage = () => {
@@ -83,6 +89,7 @@ const AdminDashboardPage = () => {
   const [newLeadSource, setNewLeadSource] = useState("");
   const [newLeadStatus, setNewLeadStatus] = useState("");
   const [selectedSourceRepId, setSelectedSourceRepId] = useState("");
+  const [newCityLeadStatus, setNewCityLeadStatus] = useState("");
 
   useEffect(() => {
     checkAuth();
@@ -136,12 +143,41 @@ const AdminDashboardPage = () => {
 
       if (rulesError) throw rulesError;
 
+      // Get city rules - only where city is not null
       const { data: cityRulesData, error: cityRulesError } = await supabase
         .from("city_routing_rules")
-        .select("*")
-        .eq("is_active", true);
+        .select(`
+          id,
+          city,
+          status,
+          sales_rep_id,
+          sales_rep:sales_rep_id (
+            name,
+            email
+          )
+        `)
+        .eq("is_active", true)
+        .not('city', 'is', null);
 
       if (cityRulesError) throw cityRulesError;
+
+      // Get source rules - only where city is null
+      const { data: sourceRulesData, error: sourceRulesError } = await supabase
+        .from("city_routing_rules")
+        .select(`
+          id,
+          lead_source,
+          status,
+          sales_rep_id,
+          sales_rep:sales_rep_id (
+            name,
+            email
+          )
+        `)
+        .eq("is_active", true)
+        .is('city', null);
+
+      if (sourceRulesError) throw sourceRulesError;
 
       const repsWithPercentages = reps.map((rep: SalesRep) => ({
         ...rep,
@@ -150,8 +186,8 @@ const AdminDashboardPage = () => {
 
       setSalesReps(repsWithPercentages);
       setCityRules(cityRulesData || []);
+      setSourceRules(sourceRulesData || []);
       await loadRoutingLogs();
-      await loadSourceRules();
     } catch (error) {
       toast.error("Failed to load sales representatives");
     }
@@ -172,24 +208,6 @@ const AdminDashboardPage = () => {
       setRoutingLogs(data || []);
     } catch (error) {
       toast.error('Failed to load routing logs');
-    }
-  };
-
-  const loadSourceRules = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('city_routing_rules')
-        .select(`
-          *,
-          sales_rep:sales_rep_id (name, email)
-        `)
-        .is('city', null)
-        .eq('is_active', true);
-
-      if (error) throw error;
-      setSourceRules(data || []);
-    } catch (error) {
-      toast.error('Failed to load source routing rules');
     }
   };
 
@@ -271,6 +289,83 @@ const AdminDashboardPage = () => {
   const handleLogout = async () => {
     localStorage.removeItem('adminUser');
     navigate('/admin/login');
+  };
+
+  const addCityRule = async () => {
+    if (!newCity || !selectedSalesRepId) {
+      toast.error("Please fill in both city name and select a sales representative");
+      return;
+    }
+
+    try {
+      // Create the rule data object
+      const ruleData = {
+        city: newCity.toLowerCase(),
+        sales_rep_id: selectedSalesRepId,
+        status: newCityLeadStatus || null,
+        is_active: true,
+        lead_source: null // Explicitly set to null to indicate this is a city rule
+      };
+
+      const { error } = await supabase
+        .from("city_routing_rules")
+        .insert([ruleData]);
+
+      if (error) throw error;
+
+      toast.success("City rule added successfully");
+      setNewCity("");
+      setNewCityLeadStatus("");
+      setSelectedSalesRepId("");
+      loadSalesReps();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to add city rule");
+    }
+  };
+
+  const addSourceRule = async () => {
+    if (!newLeadSource || !selectedSourceRepId) {
+      toast.error("Please fill in lead source and select a sales representative");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("city_routing_rules")
+        .insert([{
+          lead_source: newLeadSource.toLowerCase(),
+          status: newLeadStatus || null,
+          sales_rep_id: selectedSourceRepId,
+          is_active: true,
+          city: null // This indicates it's a source rule, not a city rule
+        }]);
+
+      if (error) throw error;
+
+      toast.success("Source rule added successfully");
+      setNewLeadSource("");
+      setNewLeadStatus("");
+      setSelectedSourceRepId("");
+      loadSalesReps(); // This will refresh both city and source rules
+    } catch (error: any) {
+      toast.error(error.message || "Failed to add source rule");
+    }
+  };
+
+  const deleteRule = async (ruleId: string) => {
+    try {
+      const { error } = await supabase
+        .from("city_routing_rules")
+        .update({ is_active: false })
+        .eq('id', ruleId);
+
+      if (error) throw error;
+
+      toast.success("Rule deleted successfully");
+      loadSalesReps();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete rule");
+    }
   };
 
   if (!isAuthenticated) {
@@ -424,11 +519,16 @@ const AdminDashboardPage = () => {
                     <CardTitle>Add New City Rule</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                       <Input
                         placeholder="City name"
                         value={newCity}
                         onChange={(e) => setNewCity(e.target.value)}
+                      />
+                      <Input
+                        placeholder="Lead Status (optional)"
+                        value={newCityLeadStatus}
+                        onChange={(e) => setNewCityLeadStatus(e.target.value)}
                       />
                       <select
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -443,7 +543,7 @@ const AdminDashboardPage = () => {
                         ))}
                       </select>
                     </div>
-                    <Button className="w-full">
+                    <Button className="w-full" onClick={addCityRule}>
                       <MapPin className="h-4 w-4 mr-2" />
                       Add City Rule
                     </Button>
@@ -459,6 +559,7 @@ const AdminDashboardPage = () => {
                       <TableHeader>
                         <TableRow>
                           <TableHead>City</TableHead>
+                          <TableHead>Lead Status</TableHead>
                           <TableHead>Assigned To</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -467,16 +568,34 @@ const AdminDashboardPage = () => {
                         {cityRules.map((rule) => (
                           <TableRow key={rule.id}>
                             <TableCell className="capitalize">{rule.city}</TableCell>
+                            <TableCell>{rule.status || 'Any'}</TableCell>
                             <TableCell>
-                              {salesReps.find(rep => rep.id === rule.sales_rep_id)?.name}
+                              {rule.sales_rep ? 
+                                `${rule.sales_rep.name} (${rule.sales_rep.email})` : 
+                                'N/A'
+                              }
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex items-center justify-end gap-2">
+                                <EditRoutingRule
+                                  ruleId={rule.id}
+                                  ruleType="city"
+                                  currentValues={{
+                                    city: rule.city,
+                                    status: rule.status,
+                                    sales_rep_id: rule.sales_rep_id
+                                  }}
+                                  salesReps={salesReps}
+                                  onUpdate={loadSalesReps}
+                                />
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => deleteRule(rule.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -516,7 +635,7 @@ const AdminDashboardPage = () => {
                         </option>
                       ))}
                     </select>
-                    <Button className="w-full">
+                    <Button className="w-full" onClick={addSourceRule}>
                       <Tags className="h-4 w-4 mr-2" />
                       Add Source Rule
                     </Button>
@@ -549,12 +668,26 @@ const AdminDashboardPage = () => {
                               }
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex items-center justify-end gap-2">
+                                <EditRoutingRule
+                                  ruleId={rule.id}
+                                  ruleType="source"
+                                  currentValues={{
+                                    lead_source: rule.lead_source,
+                                    status: rule.status,
+                                    sales_rep_id: rule.sales_rep_id
+                                  }}
+                                  salesReps={salesReps}
+                                  onUpdate={loadSalesReps}
+                                />
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => deleteRule(rule.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
