@@ -1,0 +1,5 @@
+# Update deployment configurations
+project_id = "xpwdtjmtaqzrjyeazszz"
+
+[functions.google-calendar]
+verify_jwt = false
