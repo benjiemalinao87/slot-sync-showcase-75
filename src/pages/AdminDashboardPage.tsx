@@ -330,17 +330,24 @@ const AdminDashboardPage = () => {
     }
 
     try {
-      const { error } = await supabase
+      const ruleData = {
+        lead_source: newLeadSource.toLowerCase(),
+        status: newLeadStatus || null,
+        sales_rep_id: selectedSourceRepId,
+        is_active: true,
+        city: null // This indicates it's a source rule, not a city rule
+      };
+      
+      console.log('Adding source rule with data:', ruleData);
+      
+      const { data, error } = await supabase
         .from("city_routing_rules")
-        .insert([{
-          lead_source: newLeadSource.toLowerCase(),
-          status: newLeadStatus || null,
-          sales_rep_id: selectedSourceRepId,
-          is_active: true,
-          city: null // This indicates it's a source rule, not a city rule
-        }]);
+        .insert([ruleData])
+        .select();
 
       if (error) throw error;
+      
+      console.log('Source rule added successfully:', data);
 
       toast.success("Source rule added successfully");
       setNewLeadSource("");
@@ -348,6 +355,7 @@ const AdminDashboardPage = () => {
       setSelectedSourceRepId("");
       loadSalesReps(); // This will refresh both city and source rules
     } catch (error: any) {
+      console.error('Error adding source rule:', error);
       toast.error(error.message || "Failed to add source rule");
     }
   };

@@ -23,7 +23,7 @@ interface BookingDialogProps {
     interest?: string;
     notes?: string;
     leadStatus?: string;
-    source?: string;
+    leadSource?: string;
   };
 }
 
@@ -36,7 +36,7 @@ interface BookingFormData {
   interest: string;
   notes?: string;
   leadStatus?: string;
-  source?: string;
+  leadSource?: string;
 }
 
 export const BookingDialog = ({ 
@@ -57,7 +57,7 @@ export const BookingDialog = ({
   const [interest, setInterest] = useState(initialValues.interest || '');
   const [notes, setNotes] = useState(initialValues.notes || '');
   const [leadStatus, setLeadStatus] = useState(searchParams.get('lead_status') || 'New');
-  const [source, setSource] = useState(searchParams.get('source') || '');
+  const [leadSource, setLeadSource] = useState(searchParams.get('lead_source') || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -69,7 +69,7 @@ export const BookingDialog = ({
     setInterest(initialValues.interest || '');
     setNotes(initialValues.notes || '');
     setLeadStatus(searchParams.get('lead_status') || 'New');
-    setSource(searchParams.get('source') || '');
+    setLeadSource(searchParams.get('lead_source') || '');
   }, [initialValues, searchParams]);
 
   useEffect(() => {
@@ -92,7 +92,7 @@ export const BookingDialog = ({
         interest,
         notes,
         leadStatus,
-        source
+        leadSource
       };
 
       if (onSubmit) {
@@ -141,12 +141,12 @@ export const BookingDialog = ({
                     {leadStatus}
                   </Badge>
                 )}
-                {source && (
+                {leadSource && (
                   <Badge 
                     variant="outline"
-                    className="capitalize"
+                    className="capitalize bg-blue-50 text-blue-700 border-blue-200"
                   >
-                    {source}
+                    {leadSource}
                   </Badge>
                 )}
               </div>

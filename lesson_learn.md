@@ -818,3 +818,88 @@
    - Optimize data transformation functions
    - Use memoization for expensive calculations
    - Batch state updates when possible
+
+## Database Schema Evolution and Field Inconsistency
+
+### Issue: Inconsistent Status Fields in Routing Rules
+1. **Problem Description**
+   - Source-based routing rules were being stored with inconsistent field usage
+   - The `city_routing_rules` table has both `status` and `lead_status` fields
+   - Existing rules had data in `status` field but not in `lead_status` field
+   - Updated code correctly checks both fields, but couldn't find existing rules
+
+2. **Root Cause**
+   - Database schema evolved over time, adding `lead_status` alongside `status`
+   - Previous rule creation only populated the `status` field
+   - Updated rule creation code properly populates both fields
+   - Routing logic needed to check both fields to handle legacy and new rules
+
+3. **Solution**
+   - Updated routing logic to check both `status` and `lead_status` fields
+   - Fixed existing database records to have consistent values in both fields
+   - Added proper debug logging to track routing decisions
+   - Ensured new rules consistently set both fields for backward compatibility
+
+### Best Practices for Database Schema Evolution
+1. **Field Consistency**
+   - When introducing new fields, update existing records to maintain consistency
+   - Implement database migrations to handle field additions and renames
+   - Use clear naming conventions to avoid confusion (e.g., `status` vs `lead_status`)
+   - Document schema changes and their impact on existing code
+
+2. **Data Access Patterns**
+   - Check for both old and new field names during transition periods
+   - Add detailed logging to track how fields are being accessed
+   - Implement graceful fallbacks when fields might be missing
+   - Consider using database views to present a consistent interface
+
+3. **Testing During Schema Changes**
+   - Test with both existing and new data patterns
+   - Verify backward compatibility with older records
+   - Test forward compatibility with newer records
+   - Use real-world data and scenarios during testing
+
+4. **Migration Strategy**
+   - Plan for incremental updates to avoid breaking changes
+   - Use temporary dual-write patterns during transitions
+   - Schedule cleanup of deprecated fields after sufficient transition time
+   - Document both old and new patterns for developers
+
+## URL Parameter Handling for Lead Routing
+
+### Issue: URL Parameters Not Used for Routing
+1. **Problem Description**
+   - URL parameters (`lead_source` and `lead_status`) were not being passed to the routing logic
+   - BookingDialog.tsx correctly read URL parameters but LeadBookingPage.tsx didn't pass them to the edge function
+   - The edge function was only looking up lead source/status from SugarCRM, not from direct parameters
+
+2. **Root Cause**
+   - Missing data flow from URL parameters to routing decision
+   - Incomplete parameter extraction in LeadBookingPage.tsx's handleFindDesigner function
+   - Edge function not designed to accept direct lead source/status parameters
+   - Multi-component architecture required proper parameter passing
+
+3. **Solution Implemented**
+   - Modified LeadBookingPage.tsx to extract and pass leadSource and leadStatus to the edge function
+   - Updated the edge function to check for leadSource/leadStatus directly from request body
+   - Added priority to direct parameters over SugarCRM lookup
+   - Implemented comprehensive logging to trace parameter flow
+
+### Best Practices for URL Parameter Handling
+1. **Parameter Flow**
+   - Track all parameters through the entire request/response flow
+   - Ensure each component passes all relevant parameters to the next component
+   - Use consistent parameter naming across components
+   - Log parameter values at each step for debugging
+
+2. **URL Parameter Integration**
+   - Design systems to handle parameters from multiple sources (URL, forms, APIs) consistently
+   - Use a unified approach to parameter handling across components
+   - Consider all potential sources of input when designing data flows
+   - Prioritize direct inputs over remote lookups for efficiency
+
+3. **Testing URL Parameters**
+   - Test with explicit URL parameters to verify behavior
+   - Log parameter values at each step to trace flow
+   - Verify that URL parameters override defaults correctly
+   - Test with both present and absent parameters

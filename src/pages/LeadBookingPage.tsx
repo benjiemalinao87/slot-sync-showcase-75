@@ -58,14 +58,23 @@ const LeadBookingPage = () => {
       // Store the lead details
       setLeadDetails(formData);
 
-      // Get the city and email from the form data
-      const { city, email } = formData;
+      // Get the city, email, leadStatus, and leadSource from the form data
+      const { city, email, leadStatus, leadSource } = formData;
+      
+      console.log('Finding designer with data:', { 
+        city, 
+        email, 
+        leadStatus, 
+        leadSource 
+      });
       
       // Call the get-sales-rep edge function directly to use source/city/percentage-based routing logic
       const { data, error } = await supabase.functions.invoke('get-sales-rep', {
         body: { 
           city: city?.toLowerCase()?.trim(),
-          email: email?.toLowerCase()?.trim()
+          email: email?.toLowerCase()?.trim(),
+          leadStatus: leadStatus,
+          leadSource: leadSource
         }
       });
 

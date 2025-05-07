@@ -1,4 +1,3 @@
-
 /// <reference types="https://deno.land/x/supabase@1.3.1/mod.ts" />
 /// <reference types="https://deno.land/std@0.168.0/http/server.ts" />
 
@@ -180,12 +179,17 @@ serve(async (req) => {
 
     let city = null;
     let email = null;
+    let leadSource = null;
+    let leadStatus = null;
+    
     try {
       if (req.method === 'POST') {
         const body = await req.json();
         city = body.city ? body.city.toLowerCase().trim() : null;
         email = body.email ? body.email.toLowerCase().trim() : null;
-        console.log(`Processing lead - City: ${city}, Email: ${email}`);
+        leadSource = body.leadSource ? body.leadSource.toLowerCase().trim() : null;
+        leadStatus = body.leadStatus ? body.leadStatus.toLowerCase().trim() : null;
+        console.log(`Processing lead - City: ${city}, Email: ${email}, Source: ${leadSource}, Status: ${leadStatus}`);
       }
     } catch (error) {
       return new Response(
@@ -234,7 +238,65 @@ serve(async (req) => {
       }
     };
 
-    // Start with source-based routing if email is provided
+    // First check if leadSource was directly provided in the request
+    if (leadSource) {
+      console.log('Using lead source provided in request:', leadSource);
+      
+      // Get source-based rules
+      const { data: sourceRules, error: sourceRuleError } = await supabaseClient
+        .from('city_routing_rules')
+        .select('*, sales_rep:sales_rep_id(*)')
+        .eq('is_active', true)
+        .is('city', null)
+        .not('lead_source', 'is', null);
+      
+      if (sourceRuleError) {
+        console.error('Error fetching source rules:', sourceRuleError);
+      } else {
+        console.log('Available source rules:', sourceRules);
+        
+        // Find matching rule with proper case-insensitive comparison
+        const matchingRule = sourceRules.find(rule => {
+          const ruleSource = rule.lead_source ? rule.lead_source.toLowerCase() : null;
+          const ruleStatus = rule.status || rule.lead_status;
+          const ruleStatusLower = ruleStatus ? ruleStatus.toLowerCase() : null;
+          
+          // Match with status if provided
+          if (leadStatus && ruleStatusLower) {
+            return ruleSource === leadSource && ruleStatusLower === leadStatus;
+          }
+          
+          // Otherwise match just by source
+          return ruleSource === leadSource;
+        });
+        
+        if (matchingRule) {
+          const salesRep = matchingRule.sales_rep;
+          
+          await logRoutingDetails('source', salesRep, {
+            email,
+            leadSource,
+            leadStatus,
+            routingCriteria: {
+              leadSource,
+              leadStatus
+            }
+          });
+
+          return new Response(
+            JSON.stringify({ 
+              salesRep,
+              routingMethod: 'source',
+              leadSource,
+              leadStatus
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    }
+
+    // Continue with SugarCRM lookup if we have an email
     if (email) {
       // Get SugarCRM token
       const { token, error: tokenError } = await getSugarCRMToken(supabaseClient);

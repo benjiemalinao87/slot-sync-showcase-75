@@ -317,21 +317,95 @@ None reported yet.
 - [ ] Create printable report views
 - [ ] Add more detailed analytics breakdowns 
 
-## Progress Update - Added Source Parameter Support (May 11, 2024)
+## Progress Update - Lead Source Implementation and Form Cleanup (May 13, 2024)
 
-- ✅ Added source parameter handling in BookingDialog component
-- ✅ Implemented source badge display alongside lead status badge
-- ✅ Updated form submission to include source information
+- ✅ Added lead source handling from URL parameters in booking form
+- ✅ Implemented lead source badge display alongside lead status
 - ✅ Removed redundant BookingForm.tsx component
-- ✅ Enhanced URL parameter support for lead routing
+- ✅ Enhanced BookingDialog.tsx with complete form functionality
+- ✅ Updated form submission to include lead source data
+- ✅ Improved badge styling and layout
 
 ### Key Learnings
 - URL parameters provide a clean way to pre-fill form data
-- Visual indicators (badges) help users understand routing context
-- Consistent styling between status and source badges improves UI clarity
+- Consolidating form components reduces code duplication
+- Visual indicators (badges) help users understand lead context
+- Consistent styling across badges improves UI cohesion
 
 ### Next Steps
-- [ ] Test source-based routing rules with new source parameter
-- [ ] Add validation for source parameter values
-- [ ] Consider adding source selection in form for direct submissions
-- [ ] Update documentation with new URL parameter options 
+- [ ] Implement comprehensive testing for form URL parameters
+- [ ] Add validation for lead source values
+- [ ] Enhance source-based routing rules integration
+- [ ] Document supported lead sources 
+
+## Progress Update - Fixed Source-Based Routing Issue (May 14, 2024)
+
+- ✅ Identified and fixed critical bug in source-based routing logic
+- ✅ Added support for both `status` and `lead_status` fields in the database
+- ✅ Fixed priority order for routing rules (source first, then city, then percentage)
+- ✅ Enhanced logging for better debugging of routing decisions
+- ✅ Updated source rule creation to maintain backward compatibility
+- ✅ Added validation to ensure proper database storage of routing rules
+- ✅ Fixed URL parameter handling for lead source in booking form
+
+### Key Learnings
+- Database schema evolution requires careful handling of field name changes
+- Testing with real URL parameters helps identify integration issues
+- Consistent field names across components is critical for routing logic
+- Detailed logging helps track complex routing decision processes
+- Priority order in routing needs to be consistently applied
+
+### Next Steps
+- [ ] Consider database migration to consolidate duplicate fields
+- [ ] Add automated tests for routing logic with various parameters
+- [ ] Update admin UI to show routing priority order
+- [ ] Add real-time routing logs for better debugging
+- [ ] Create documentation for supported lead sources and statuses 
+
+## Progress Update - URL Parameter Routing Fix (May 15, 2024)
+
+- ✅ Fixed lead source and status routing via URL parameters
+- ✅ Enhanced data flow from URL parameters to routing logic
+- ✅ Updated get-sales-rep edge function to accept direct leadSource/leadStatus parameters
+- ✅ Modified LeadBookingPage to extract and pass all relevant URL parameters
+- ✅ Added priority handling to prefer direct parameters over API lookups
+- ✅ Improved routing logic to check both URL parameters and SugarCRM data
+- ✅ Added detailed logging throughout parameter flow for better debugging
+
+### Key Learnings
+- URL parameters need explicit handling in multi-component architectures
+- Parameter flow needs to be considered end-to-end across all components
+- Direct inputs should be prioritized over remote lookups for efficiency and reliability
+- Consistent naming and handling of parameters is essential across components
+
+### Next Steps
+- [ ] Create comprehensive tests for all routing parameter combinations
+- [ ] Implement UI indicators to show active routing parameters
+- [ ] Add admin interface for testing different parameter combinations
+- [ ] Enhance logging to track parameter transformation throughout the system 
+
+## Progress Update - Completed URL Parameter Handling and Documentation (May 15, 2024)
+
+- ✅ Fixed source-based routing with URL parameters
+- ✅ Deployed updated edge function with improved routing logic
+- ✅ Created comprehensive documentation:
+  - Lead_Routing_SOP.md: Standard operating procedures for the routing system
+  - Setup_Guide.md: Quick start guide for new developers and interns
+- ✅ Added detailed logging throughout the routing process
+- ✅ Fixed backward compatibility with both `status` and `lead_status` fields
+- ✅ Enhanced debugging capabilities in edge functions
+- ✅ Updated database records for consistent field values
+- ✅ Implemented better error handling for routing edge cases
+
+### Key Improvements:
+- URL parameter values now correctly influence routing decisions
+- Improved priority order for routing rules (source+status → source → city → percentage)
+- More consistent handling of field names across components
+- Better documentation for new team members
+- Fixed edge cases in the routing logic implementation
+
+### Next Steps:
+- [ ] Implement email notifications for successful routing
+- [ ] Add analytics dashboard for routing performance metrics
+- [ ] Enhance test coverage for edge functions
+- [ ] Create automated integration tests for routing scenarios 

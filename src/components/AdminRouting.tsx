@@ -307,23 +307,33 @@ const AdminRouting = () => {
     }
 
     try {
+      // First deactivate any existing rules for this source
       await supabase
         .from("city_routing_rules")
         .update({ is_active: false })
         .is('city', null)
         .eq('lead_source', newLeadSource.toLowerCase());
 
-      const { error } = await supabase
+      // Create the new rule with consistent field names
+      const ruleData = {
+        city: null,
+        lead_source: newLeadSource.toLowerCase(),
+        lead_status: newLeadStatus || null,
+        status: newLeadStatus || null, // Also set status field for backward compatibility
+        sales_rep_id: selectedSourceRepId,
+        is_active: true
+      };
+
+      console.log('Creating source rule with data:', ruleData);
+
+      const { data, error } = await supabase
         .from("city_routing_rules")
-        .insert([{
-          city: null,
-          lead_source: newLeadSource.toLowerCase(),
-          lead_status: newLeadStatus || null,
-          sales_rep_id: selectedSourceRepId,
-          is_active: true
-        }]);
+        .insert([ruleData])
+        .select();
 
       if (error) throw error;
+      
+      console.log('Source rule created successfully:', data);
 
       setNewLeadSource("");
       setNewLeadStatus("");
@@ -331,6 +341,7 @@ const AdminRouting = () => {
       loadSalesReps();
       toast.success("Source routing rule added successfully");
     } catch (error: any) {
+      console.error('Error creating source rule:', error);
       toast.error(error.message);
     }
   };
