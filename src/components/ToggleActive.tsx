@@ -16,12 +16,33 @@ const ToggleActive = ({ repId, isActive, onUpdate }: ToggleActiveProps) => {
   const handleToggle = async (checked: boolean) => {
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from("sales_reps")
-        .update({ is_active: checked })
-        .eq("id", repId);
+      // Start a transaction by using multiple updates
+      const updates = [];
 
-      if (error) throw error;
+      // Update sales_reps table
+      updates.push(
+        supabase
+          .from("sales_reps")
+          .update({ is_active: checked })
+          .eq("id", repId)
+      );
+
+      // Update routing_rules table
+      updates.push(
+        supabase
+          .from("routing_rules")
+          .update({ is_active: checked })
+          .eq("sales_rep_id", repId)
+      );
+
+      // Execute all updates
+      const results = await Promise.all(updates);
+
+      // Check for errors
+      const errors = results.filter(result => result.error);
+      if (errors.length > 0) {
+        throw errors[0].error;
+      }
       
       // Success message using appropriate verb based on state change
       toast.success(`Sales rep ${checked ? 'activated' : 'deactivated'} successfully`);

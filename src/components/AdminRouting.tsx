@@ -41,8 +41,12 @@ type SalesRep = {
 type CityRule = {
   id: string;
   city: string;
+  status: string;
   sales_rep_id: string;
-  is_active: boolean;
+  sales_rep?: {
+    name: string;
+    email: string;
+  };
 };
 
 const AdminRouting = () => {
@@ -174,12 +178,14 @@ const AdminRouting = () => {
 
   const loadSalesReps = async () => {
     try {
+      // Get all sales reps
       const { data: reps, error: repsError } = await supabase
         .from("sales_reps")
         .select("*");
 
       if (repsError) throw repsError;
 
+      // Get active routing rules
       const { data: rules, error: rulesError } = await supabase
         .from("routing_rules")
         .select("*")
@@ -187,42 +193,57 @@ const AdminRouting = () => {
 
       if (rulesError) throw rulesError;
 
+      // Get city rules - only where city is not null
       const { data: cityRulesData, error: cityRulesError } = await supabase
         .from("city_routing_rules")
-        .select("*")
-        .eq("is_active", true);
+        .select(`
+          id,
+          city,
+          status,
+          sales_rep_id,
+          sales_rep:sales_rep_id (
+            name,
+            email
+          )
+        `)
+        .eq("is_active", true)
+        .not('city', 'is', null);
 
       if (cityRulesError) throw cityRulesError;
 
-      const repsWithPercentages = reps.map((rep: SalesRep) => ({
-        ...rep,
-        percentage: rules.find((rule: any) => rule.sales_rep_id === rep.id)?.percentage || 0,
-      }));
+      // Get source rules - only where city is null
+      const { data: sourceRulesData, error: sourceRulesError } = await supabase
+        .from("city_routing_rules")
+        .select(`
+          id,
+          lead_source,
+          status,
+          sales_rep_id,
+          sales_rep:sales_rep_id (
+            name,
+            email
+          )
+        `)
+        .eq("is_active", true)
+        .is('city', null);
+
+      if (sourceRulesError) throw sourceRulesError;
+
+      // Map sales reps with their percentages, considering active status
+      const repsWithPercentages = reps.map((rep: SalesRep) => {
+        const activeRule = rules.find((rule: any) => rule.sales_rep_id === rep.id);
+        return {
+          ...rep,
+          percentage: rep.is_active ? (activeRule?.percentage || 0) : 0
+        };
+      });
 
       setSalesReps(repsWithPercentages);
       setCityRules(cityRulesData || []);
+      setSourceRules(sourceRulesData || []);
       await loadRoutingLogs();
-      await loadSourceRules();
     } catch (error) {
       toast.error("Failed to load sales representatives");
-    }
-  };
-
-  const loadSourceRules = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('city_routing_rules')
-        .select(`
-          *,
-          sales_rep:sales_rep_id (name, email)
-        `)
-        .is('city', null)
-        .eq('is_active', true);
-
-      if (error) throw error;
-      setSourceRules(data || []);
-    } catch (error) {
-      toast.error('Failed to load source routing rules');
     }
   };
 
@@ -715,7 +736,10 @@ const AdminRouting = () => {
                           <TableRow key={rule.id}>
                             <TableCell className="capitalize">{rule.city}</TableCell>
                             <TableCell>
-                              {salesReps.find(rep => rep.id === rule.sales_rep_id)?.name}
+                              {rule.sales_rep ? 
+                                `${rule.sales_rep.name} (${rule.sales_rep.email})` : 
+                                'N/A'
+                              }
                             </TableCell>
                             <TableCell className="text-right">
                               <Button
