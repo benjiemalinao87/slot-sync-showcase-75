@@ -39,6 +39,7 @@ const LeadBookingPage = () => {
     email: searchParams.get('email_address') || '',
     phone: searchParams.get('phone') || '',
     city: searchParams.get('city') || '',
+    address: searchParams.get('address') || '',
   };
 
   // Auto-open dialog if URL parameters are present

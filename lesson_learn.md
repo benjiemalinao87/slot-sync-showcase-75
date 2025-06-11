@@ -1038,3 +1038,103 @@
    - Ensure all query paths include the required filters
    - Test edge cases where inactive resources might still be selected
    - Keep UI state and database state consistent with database triggers
+
+## Timezone Handling Implementation (May 11, 2024)
+
+### ✅ What Was Fixed
+1. **Proper Date Construction**
+   - Replaced `setHours()` with proper Date constructor using user's timezone
+   - Used `new Date(year, month, day, hour, minute)` for timezone-aware date creation
+   - Eliminated timezone conversion issues during appointment booking
+
+2. **Business Hours Filtering**
+   - Created timezone utility helper (`timezoneHelper.ts`)
+   - Server returns wide time range (6 AM - 8 PM UTC)
+   - Client filters to business hours (9 AM - 5 PM) in user's timezone
+   - Proper timezone-aware time slot display
+
+3. **ISO String Validation**
+   - Eliminated complex time parsing in `googleCalendarAuth.ts`
+   - Direct ISO string validation instead of AM/PM conversion
+   - Consistent date format throughout the booking flow
+
+4. **Enhanced Logging**
+   - Added timezone information to all date-related logs
+   - Better debugging with both UTC and local time display
+   - Validation of timezone strings using `Intl.DateTimeFormat`
+
+### 🔧 Technical Implementation
+1. **Client-Side Timezone Detection**
+   ```typescript
+   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+   ```
+
+2. **Proper Date Construction**
+   ```typescript
+   // Before (WRONG):
+   startTime.setHours(hours, minutes, 0, 0);
+   
+   // After (CORRECT):
+   const startTime = new Date(year, month, day, hours, minutes, 0, 0);
+   ```
+
+3. **Business Hours Filtering**
+   ```typescript
+   const businessHours = getDefaultBusinessHours(userTimeZone);
+   const filteredSlots = filterSlotsForBusinessHours(rawSlots, businessHours);
+   ```
+
+4. **Timezone-Aware Display**
+   ```typescript
+   const timeStr = startTime.toLocaleTimeString([], { 
+     hour: 'numeric', 
+     minute: '2-digit',
+     hour12: false,
+     timeZone: userTimeZone
+   });
+   ```
+
+### ⚠️ What to Avoid
+1. **Never use `setHours()` for user input times** - operates in local timezone
+2. **Don't hardcode business hours in server** - let client handle timezone filtering
+3. **Avoid complex time string parsing** - use ISO strings directly
+4. **Don't assume server and client are in same timezone**
+
+### 🎯 Best Practices Established
+1. **Timezone Parameter Passing**
+   - Always pass user's timezone to booking functions
+   - Include timezone info in calendar event descriptions
+   - Validate timezone strings before use
+
+2. **Server-Side Strategy**
+   - Return broad time ranges from server (UTC)
+   - Let client filter based on user's business hours
+   - Use proper UTC methods for date operations
+
+3. **Error Handling**
+   - Validate timezone strings with `Intl.DateTimeFormat`
+   - Provide clear error messages for timezone issues
+   - Graceful fallbacks for invalid timezones
+
+4. **Testing Considerations**
+   - Test across multiple timezones
+   - Verify business hours in different regions
+   - Check edge cases like daylight saving time transitions
+
+### 🔍 Files Modified
+- `src/components/SchedulingCalendar.tsx` - Fixed date construction and timezone handling
+- `src/utils/googleCalendarAuth.ts` - Simplified time parsing and added timezone support
+- `supabase/functions/google-calendar/index.ts` - Enhanced server-side slot generation
+- `src/utils/timezoneHelper.ts` - New utility for timezone operations
+
+### 🚀 Impact
+- **Accurate appointment scheduling** across all timezones
+- **Proper business hours display** for users in different regions
+- **Consistent calendar event times** in Google Calendar
+- **Better user experience** with timezone-aware time display
+
+### 📝 Future Improvements
+- [ ] Add timezone selection in admin settings
+- [ ] Support for different business hours per sales rep
+- [ ] Handle daylight saving time transitions
+- [ ] Add timezone abbreviation display (EST, PST, etc.)

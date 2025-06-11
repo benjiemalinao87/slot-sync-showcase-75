@@ -83,55 +83,58 @@ export const bookAppointment = async (
     name: string;
     email: string;
     notes?: string;
+    address?: string;
+    timeZone?: string;
   },
   calendarId: string = COMPANY_CALENDAR_ID // Add optional calendarId parameter with default
 ) => {
   try {
-    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const userTimeZone = bookingDetails.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     const origin = window.location.origin;
     
-    // Format the date strings properly
-    const formatTimeString = (timeStr: string) => {
-      // Extract the date part and time part
-      const [datePart, timePart] = timeStr.split('T');
-      
-      // Handle time format with potential AM/PM
-      let formattedTime = timePart;
-      if (formattedTime.includes('AM') || formattedTime.includes('PM')) {
-        // Parse the time properly
-        const timeComponents = formattedTime.split(':');
-        let hours = parseInt(timeComponents[0]);
-        const minutes = timeComponents[1].replace('AM', '').replace('PM', '');
-        
-        // Convert to 24-hour format if PM
-        if (formattedTime.includes('PM') && hours < 12) {
-          hours += 12;
+    // Validate that we have ISO strings (already in proper format from client)
+    const validateISOString = (timeStr: string) => {
+      try {
+        const date = new Date(timeStr);
+        if (isNaN(date.getTime())) {
+          throw new Error(`Invalid date: ${timeStr}`);
         }
-        // Handle 12 AM case
-        if (formattedTime.includes('AM') && hours === 12) {
-          hours = 0;
-        }
-        
-        formattedTime = `${hours.toString().padStart(2, '0')}:${minutes}:00`;
+        return timeStr; // Return as-is since it's already an ISO string
+      } catch (error) {
+        throw new Error(`Invalid time format: ${timeStr}`);
       }
-      
-      return `${datePart}T${formattedTime}`;
     };
     
-    const formattedStartTime = formatTimeString(startTime);
-    const formattedEndTime = formatTimeString(endTime);
+    const formattedStartTime = validateISOString(startTime);
+    const formattedEndTime = validateISOString(endTime);
     
-    console.log('Booking appointment with formatted times:', { formattedStartTime, formattedEndTime });
+    console.log('Booking appointment with validated times:', { 
+      formattedStartTime, 
+      formattedEndTime, 
+      userTimeZone 
+    });
     console.log('Using calendar ID:', calendarId);
+
+    // Extract time for the title using the user's timezone
+    const startDate = new Date(formattedStartTime);
+    const timeStr = startDate.toLocaleTimeString([], { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: false,
+      timeZone: userTimeZone
+    });
+
+    // Create event title
+    const eventTitle = `Cobalt Site Visit: ${timeStr}: ${bookingDetails.address || 'No address provided'}`;
     
     const { data, error } = await supabase.functions.invoke('google-calendar', {
       body: { 
         startTime: formattedStartTime, 
         endTime: formattedEndTime, 
         timeZone: userTimeZone,
-        summary: `Meeting with ${bookingDetails.name}`,
-        description: `Booking details:\nName: ${bookingDetails.name}\nEmail: ${bookingDetails.email}\nNotes: ${bookingDetails.notes || 'No notes provided'}`,
-        calendarId: calendarId, // Use the provided calendarId instead of COMPANY_CALENDAR_ID
+        summary: eventTitle,
+        description: `Booking details:\nName: ${bookingDetails.name}\nEmail: ${bookingDetails.email}\nAddress: ${bookingDetails.address || 'No address provided'}\nNotes: ${bookingDetails.notes || 'No notes provided'}\nTimezone: ${userTimeZone}`,
+        calendarId: calendarId,
         action: 'bookAppointment',
         origin
       }
@@ -147,7 +150,7 @@ export const bookAppointment = async (
       throw new Error(data.error);
     }
 
-    console.log('Successfully booked appointment');
+    console.log('Successfully booked appointment with timezone:', userTimeZone);
     return true;
   } catch (error: any) {
     console.error('Failed to book appointment:', error);

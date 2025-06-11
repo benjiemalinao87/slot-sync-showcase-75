@@ -20,6 +20,7 @@ interface BookingDialogProps {
     email?: string;
     phone?: string;
     city?: string;
+    address?: string;
     interest?: string;
     notes?: string;
     leadStatus?: string;
@@ -33,6 +34,7 @@ interface BookingFormData {
   email: string;
   phone: string;
   city?: string;
+  address?: string;
   interest: string;
   notes?: string;
   leadStatus?: string;
@@ -54,6 +56,7 @@ export const BookingDialog = ({
   const [email, setEmail] = useState(initialValues.email || '');
   const [phone, setPhone] = useState(initialValues.phone || '');
   const [city, setCity] = useState(initialValues.city || '');
+  const [address, setAddress] = useState(initialValues.address || '');
   const [interest, setInterest] = useState(initialValues.interest || '');
   const [notes, setNotes] = useState(initialValues.notes || '');
   const [leadStatus, setLeadStatus] = useState(searchParams.get('lead_status') || 'New');
@@ -66,6 +69,7 @@ export const BookingDialog = ({
     setEmail(initialValues.email || '');
     setPhone(initialValues.phone || '');
     setCity(initialValues.city || '');
+    setAddress(initialValues.address || '');
     setInterest(initialValues.interest || '');
     setNotes(initialValues.notes || '');
     setLeadStatus(searchParams.get('lead_status') || 'New');
@@ -89,6 +93,7 @@ export const BookingDialog = ({
         email,
         phone,
         city: city || undefined,
+        address: address || undefined,
         interest,
         notes,
         leadStatus,
@@ -238,6 +243,25 @@ export const BookingDialog = ({
                 </div>
               </div>
               <p className="text-sm text-gray-500 ml-1">Helps us match you with a local solar expert</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="address" className="text-gray-700 font-medium">Address</Label>
+              <div className="relative">
+                <Input
+                  id="address"
+                  placeholder="Enter your street address"
+                  value={address}
+                  onChange={e => setAddress(e.target.value)}
+                  className="rounded-lg border-gray-200 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 pl-10 transition-all py-5"
+                />
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                  </svg>
+                </div>
+              </div>
+              <p className="text-sm text-gray-500 ml-1">Your complete street address</p>
             </div>
           </div>
         );

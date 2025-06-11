@@ -17,6 +17,12 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { format, isWeekend, isBefore, startOfDay } from 'date-fns';
 import { supabase } from "@/integrations/supabase/client";
+import { 
+  filterSlotsForBusinessHours, 
+  getDefaultBusinessHours, 
+  formatTimeInTimezone,
+  isValidTimezone 
+} from '@/utils/timezoneHelper';
 
 interface SchedulingCalendarProps {
   salesRepEmail?: string;
@@ -121,28 +127,47 @@ export function SchedulingCalendar({ salesRepEmail, salesRep, leadDetails, onBoo
     setError(null);
 
     try {
+      // Get user's timezone
+      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      
+      // Validate timezone
+      if (!isValidTimezone(userTimeZone)) {
+        throw new Error("Invalid user timezone detected");
+      }
+      
       // Format date properly to ensure consistency
       const formattedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
       
       console.log("Fetching slots for:", emailToUse);
       console.log("Date for slots:", formattedDate.toISOString());
+      console.log("User timezone:", userTimeZone);
       
       // Call the edge function to get available slots using service account
-      const slots = await getAvailableSlots(formattedDate, emailToUse);
+      const rawSlots = await getAvailableSlots(formattedDate, emailToUse);
       
-      // Check if slots is an array before setting state
-      if (Array.isArray(slots)) {
-        console.log(`Retrieved ${slots.length} time slots:`, slots);
-        setTimeSlots(slots);
-        
-        if (slots.length === 0) {
-          toast.info("No time slots available for this date");
-        }
-      } else {
-        console.error('Invalid slots data returned:', slots);
+      // Check if slots is an array before processing
+      if (!Array.isArray(rawSlots)) {
+        console.error('Invalid slots data returned:', rawSlots);
         setTimeSlots([]);
         setError('Invalid response format from server');
         toast.error("Failed to load time slots - invalid format");
+        return;
+      }
+      
+      console.log(`Retrieved ${rawSlots.length} raw time slots from server`);
+      
+      // Get business hours for user's timezone
+      const businessHours = getDefaultBusinessHours(userTimeZone);
+      
+      // Filter slots based on business hours and format for user's timezone
+      const filteredSlots = filterSlotsForBusinessHours(rawSlots, businessHours);
+      
+      console.log(`Filtered to ${filteredSlots.length} slots within business hours (${businessHours.start}:00-${businessHours.end}:00 ${userTimeZone})`);
+      
+      setTimeSlots(filteredSlots);
+      
+      if (filteredSlots.length === 0) {
+        toast.info("No time slots available during business hours for this date");
       }
     } catch (err: any) {
       console.error('Error fetching slots:', err);
@@ -174,11 +199,15 @@ export function SchedulingCalendar({ salesRepEmail, salesRep, leadDetails, onBoo
   const handleConfirmBooking = async () => {
     if (!selectedSlot || !date || !salesRepEmail) return;
 
+    const bookingToastId = toast.loading("Creating your appointment...");
     setIsLoading(true);
     setError(null);
 
     try {
-      // Create a new date object for the selected date
+      // Get user's timezone for proper conversion
+      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      
+      // Create a new date object for the selected date in user's timezone
       const selectedDate = new Date(date);
       
       // Check if the date is valid
@@ -187,6 +216,7 @@ export function SchedulingCalendar({ salesRepEmail, salesRep, leadDetails, onBoo
       }
       
       console.log("Selected date:", selectedDate.toISOString());
+      console.log("User timezone:", userTimeZone);
       console.log("Selected slot:", selectedSlot);
       
       // Parse time in format "HH:MM" - handle both 12 and 24 hour formats
@@ -208,12 +238,13 @@ export function SchedulingCalendar({ salesRepEmail, salesRep, leadDetails, onBoo
       const startTimeParts = parseTimeString(selectedSlot.startTime);
       const endTimeParts = parseTimeString(selectedSlot.endTime);
       
-      // Create new date objects with the parsed values
-      const startTime = new Date(selectedDate);
-      startTime.setHours(startTimeParts.hours, startTimeParts.minutes, 0, 0);
+      // Create new date objects with proper timezone handling
+      // Use the selected date's year, month, and day in user's timezone
+      const startTime = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 
+                                startTimeParts.hours, startTimeParts.minutes, 0, 0);
       
-      const endTime = new Date(selectedDate);
-      endTime.setHours(endTimeParts.hours, endTimeParts.minutes, 0, 0);
+      const endTime = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 
+                              endTimeParts.hours, endTimeParts.minutes, 0, 0);
       
       // Manually check if the date objects are valid
       if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
@@ -226,8 +257,10 @@ export function SchedulingCalendar({ salesRepEmail, salesRep, leadDetails, onBoo
         throw new Error("Invalid date or time values");
       }
       
-      console.log("Start time:", startTime.toISOString());
-      console.log("End time:", endTime.toISOString());
+      console.log("Start time (user timezone):", startTime.toString());
+      console.log("Start time (UTC):", startTime.toISOString());
+      console.log("End time (user timezone):", endTime.toString());
+      console.log("End time (UTC):", endTime.toISOString());
 
       // Prepare booking details
       const bookingName = leadDetails ? 
@@ -236,23 +269,37 @@ export function SchedulingCalendar({ salesRepEmail, salesRep, leadDetails, onBoo
         
       const bookingEmail = leadDetails?.email || "No email provided";
       const bookingNotes = leadDetails?.notes || `Interests: ${leadDetails?.interest || "Not specified"}`;
+      const bookingAddress = leadDetails?.address ? `${leadDetails.address}, ${leadDetails.city || ''}` : (leadDetails?.city || 'No address provided');
+
+      // Format the time for the title using user's timezone
+      const timeStr = startTime.toLocaleTimeString([], { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: false,
+        timeZone: userTimeZone
+      });
+
+      // Create the event title
+      const eventTitle = `Cobalt Site Visit: ${timeStr}: ${bookingAddress}`;
 
       // Get the calendar ID (sales rep's email) for booking
       const calendarIdToUse = salesRepEmail || salesRep?.email;
 
-      // Pass the calendar ID to the bookAppointment function
+      // Pass the calendar ID to the bookAppointment function with timezone info
       await bookAppointment(
         startTime.toISOString(),
         endTime.toISOString(),
         {
           name: bookingName,
           email: bookingEmail,
-          notes: bookingNotes
+          notes: `Address: ${bookingAddress}\n${bookingNotes}`,
+          address: bookingAddress,
+          timeZone: userTimeZone // Pass timezone info
         },
         calendarIdToUse // Pass the calendar ID (sales rep's email)
       );
 
-      toast.success("Appointment booked successfully!");
+      toast.success("Appointment booked successfully!", { id: bookingToastId });
       
       const bookingInfo = {
         date: selectedDate,
@@ -314,7 +361,7 @@ export function SchedulingCalendar({ salesRepEmail, salesRep, leadDetails, onBoo
       }
     } catch (error: any) {
       console.error('Failed to book appointment:', error);
-      toast.error("Failed to book appointment: " + (error.message || "Please try again later"));
+      toast.error("Failed to book appointment: " + (error.message || "Please try again later"), { id: bookingToastId });
       setBookingError(error.message || "Unknown error occurred while booking appointment");
       setIsErrorDialogOpen(true);
     } finally {

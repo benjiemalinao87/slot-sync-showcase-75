@@ -1,7 +1,6 @@
 /// <reference types="https://deno.land/x/deno/cli/types/dts/index.d.ts" />
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { google } from 'npm:googleapis';
-
 // Define allowed origins
 const allowedOrigins = [
   'https://appointment-request-with-cobalt.netlify.app',
@@ -11,7 +10,6 @@ const allowedOrigins = [
   'https://cobaltpower.chau.link',
   '*' // Allow any origin temporarily while debugging
 ];
-
 // New CORS handler implementation:
 const getCorsHeaders = ()=>({
     'Access-Control-Allow-Origin': '*',
@@ -19,7 +17,6 @@ const getCorsHeaders = ()=>({
     'Access-Control-Allow-Headers': '*',
     'Content-Type': 'application/json'
   });
-
 const handleCors = (req)=>{
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -29,7 +26,6 @@ const handleCors = (req)=>{
   }
   return getCorsHeaders();
 };
-
 // Initialize Google Calendar API with service account
 let googleAuth;
 try {
@@ -55,15 +51,6 @@ try {
   console.error('Failed to initialize Google Auth:', error);
   googleAuth = null;
 }
-
-interface TimeSlotItem {
-  id: string;
-  startTime: string;
-  endTime: string;
-  isAvailable: boolean;
-  time: string;
-}
-
 // Handle OPTIONS preflight requests properly
 serve(async (req)=>{
   console.log('Edge function received request:', req.method, req.url);
@@ -168,100 +155,74 @@ serve(async (req)=>{
           const { date, calendarId } = body;
           if (!date || !calendarId) {
             return new Response(JSON.stringify({
-              error: 'Missing date or calendarId parameter'
+              error: 'Date and Calendar ID are required'
             }), {
               status: 400,
               headers: corsHeaders
             });
           }
           try {
+            const timeMin = new Date(date);
+            timeMin.setHours(9, 0, 0, 0); // Start at 9:00 AM
+            const timeMax = new Date(date);
+            timeMax.setHours(17, 0, 0, 0); // End at 5:00 PM
             if (!googleAuth) {
-              throw new Error('Google Auth not initialized properly');
+              throw new Error("Google Auth not initialized properly");
             }
-            const calendar = google.calendar({
+            // Get busy slots from Google Calendar
+            const calendarClient = google.calendar({
               version: 'v3',
               auth: await googleAuth.getClient()
             });
-            console.log(`Fetching available slots for ${calendarId} on ${date}`);
-            
-            // Parse the date properly and set business hours in UTC
-            const targetDate = new Date(date);
-            if (isNaN(targetDate.getTime())) {
-              throw new Error('Invalid date format');
-            }
-            
-            // Create time boundaries for the day in UTC
-            // Note: Business hours are assumed to be in the user's local timezone
-            // We'll fetch a broader range and let the client filter appropriately
-            const timeMin = new Date(targetDate);
-            timeMin.setUTCHours(0, 0, 0, 0); // Start of day UTC
-            const timeMax = new Date(targetDate);
-            timeMax.setUTCHours(23, 59, 59, 999); // End of day UTC
-            
-            console.log(`Fetching events between ${timeMin.toISOString()} and ${timeMax.toISOString()}`);
-            
-            // Fetch existing events for the day
-            const response = await calendar.events.list({
-              calendarId,
-              timeMin: timeMin.toISOString(),
-              timeMax: timeMax.toISOString(),
-              singleEvents: true,
-              orderBy: 'startTime'
+            const response = await calendarClient.freebusy.query({
+              requestBody: {
+                timeMin: timeMin.toISOString(),
+                timeMax: timeMax.toISOString(),
+                items: [
+                  {
+                    id: calendarId
+                  }
+                ]
+              }
             });
-            const events = response.data.items || [];
-            console.log(`Found ${events.length} existing events`);
-            
-            // Generate available slots (let client handle timezone-specific business hours)
+            const busySlots = response.data.calendars?.[calendarId]?.busy || [];
+            console.log(`Found ${busySlots.length} busy slots`);
+            // Generate time slots (30-minute intervals)
             const slots = [];
-            
-            // Create slots every 30 minutes from 6 AM to 8 PM UTC
-            // This gives a wide range that can be filtered client-side based on user's timezone
-            let currentTime = new Date(targetDate);
-            currentTime.setUTCHours(6, 0, 0, 0); // Start at 6 AM UTC
-            
-            const endOfDay = new Date(targetDate);
-            endOfDay.setUTCHours(20, 0, 0, 0); // End at 8 PM UTC
-            
-            while (currentTime < endOfDay) {
+            let slotId = 1;
+            let currentTime = new Date(timeMin);
+            while(currentTime < timeMax){
               const slotStart = new Date(currentTime);
-              const slotEnd = new Date(currentTime.getTime() + 30 * 60000); // 30 minutes later
-              
-              // Check if this slot conflicts with any existing events
-              const isConflict = events.some(event => {
-                if (!event.start?.dateTime || !event.end?.dateTime) return false;
-                const eventStart = new Date(event.start.dateTime);
-                const eventEnd = new Date(event.end.dateTime);
-                return slotStart < eventEnd && slotEnd > eventStart;
+              const slotEnd = new Date(currentTime.getTime() + 60 * 60000); // 60 minutes
+              const isBooked = busySlots.some((bookedSlot)=>slotStart < new Date(bookedSlot.end) && slotEnd > new Date(bookedSlot.start));
+              const startTimeString = slotStart.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit'
               });
-              
+              const endTimeString = slotEnd.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit'
+              });
               slots.push({
-                id: `${slotStart.toISOString()}_${slotEnd.toISOString()}`,
-                startTime: slotStart.toISOString(),
-                endTime: slotEnd.toISOString(),
-                isAvailable: !isConflict,
-                time: slotStart.toLocaleTimeString('en-US', { 
-                  hour: 'numeric', 
-                  minute: '2-digit',
-                  hour12: false,
-                  timeZone: 'UTC'
-                })
+                id: `slot-${slotId++}`,
+                startTime: startTimeString.replace(/\s/g, ''),
+                endTime: endTimeString.replace(/\s/g, ''),
+                isAvailable: !isBooked,
+                time: `${startTimeString} - ${endTimeString}`
               });
-              
-              // Move to next 30-minute slot
-              currentTime.setUTCMinutes(currentTime.getUTCMinutes() + 30);
+              currentTime = new Date(currentTime.getTime() + 60 * 60000); // Increment by 60 minutes
             }
-            
             console.log(`Generated ${slots.length} time slots`);
             return new Response(JSON.stringify({
-              slots: slots.filter(slot => slot.isAvailable) // Only return available slots
+              slots
             }), {
               headers: corsHeaders
             });
           } catch (error) {
             console.error('Error fetching available slots:', error);
             return new Response(JSON.stringify({
-              error: `Failed to fetch available slots: ${error.message}`,
-              details: error.stack
+              error: `Failed to fetch available slots: ${error.message || 'Unknown error'}`,
+              stack: error.stack
             }), {
               status: 500,
               headers: corsHeaders
@@ -273,98 +234,89 @@ serve(async (req)=>{
           const { startDate, endDate, calendarId } = body;
           if (!startDate || !endDate || !calendarId) {
             return new Response(JSON.stringify({
-              error: 'Missing required parameters: startDate, endDate, or calendarId'
+              error: 'Start date, end date, and Calendar ID are required'
             }), {
               status: 400,
               headers: corsHeaders
             });
           }
           try {
+            const timeMin = new Date(startDate);
+            const timeMax = new Date(endDate);
             if (!googleAuth) {
-              throw new Error('Google Auth not initialized properly');
+              throw new Error("Google Auth not initialized properly");
             }
-            const calendar = google.calendar({
+            // Get busy slots from Google Calendar
+            const calendarClient = google.calendar({
               version: 'v3',
               auth: await googleAuth.getClient()
             });
-            
-            console.log(`Fetching busy days for ${calendarId} from ${startDate} to ${endDate}`);
-            
-            // Parse dates properly
-            const timeMin = new Date(startDate);
-            const timeMax = new Date(endDate);
-            
-            if (isNaN(timeMin.getTime()) || isNaN(timeMax.getTime())) {
-              throw new Error('Invalid date format in startDate or endDate');
-            }
-            
-            console.log(`Fetching events between ${timeMin.toISOString()} and ${timeMax.toISOString()}`);
-            
-            // Fetch events for the month
-            const response = await calendar.events.list({
-              calendarId,
-              timeMin: timeMin.toISOString(),
-              timeMax: timeMax.toISOString(),
-              singleEvents: true,
-              orderBy: 'startTime'
-            });
-            
-            const events = response.data.items || [];
-            console.log(`Found ${events.length} events in the date range`);
-            
-            // Collect dates that have events (busy days)
-            const busyDaysSet = new Set<string>();
-            
-            events.forEach(event => {
-              if (event.start?.dateTime) {
-                const eventStart = new Date(event.start.dateTime);
-                const eventEnd = new Date(event.end?.dateTime || event.start.dateTime);
-                
-                // Add all days that the event spans
-                let currentDate = new Date(eventStart);
-                currentDate.setUTCHours(0, 0, 0, 0);
-                
-                const endEventDate = new Date(eventEnd);
-                endEventDate.setUTCHours(0, 0, 0, 0);
-                
-                while (currentDate <= endEventDate) {
-                  busyDaysSet.add(currentDate.toISOString().slice(0, 10));
-                  currentDate.setUTCDate(currentDate.getUTCDate() + 1);
-                }
+            const response = await calendarClient.freebusy.query({
+              requestBody: {
+                timeMin: timeMin.toISOString(),
+                timeMax: timeMax.toISOString(),
+                items: [
+                  {
+                    id: calendarId
+                  }
+                ]
               }
             });
-            
-            // Convert Set to Array and filter out days that are completely available
-            const busyDays = Array.from(busyDaysSet).filter(dayStr => {
-              const day = new Date(dayStr + 'T00:00:00.000Z');
-              const dayStart = new Date(day);
-              dayStart.setUTCHours(6, 0, 0, 0); // Business hours start (UTC)
-              const dayEnd = new Date(day);
-              dayEnd.setUTCHours(20, 0, 0, 0); // Business hours end (UTC)
-              
-              // Check if there are events during business hours
-              const hasBusinessHourEvents = events.some(event => {
-                if (!event.start?.dateTime || !event.end?.dateTime) return false;
-                const eventStart = new Date(event.start.dateTime);
-                const eventEnd = new Date(event.end.dateTime);
-                return eventStart < dayEnd && eventEnd > dayStart;
-              });
-              
-              return hasBusinessHourEvents;
+            const busySlots = response.data.calendars?.[calendarId]?.busy || [];
+            console.log(`Found ${busySlots.length} busy slots in the date range`);
+            // Extract just the dates (not times) to maintain privacy
+            const busyDays = new Set();
+            busySlots.forEach((slot)=>{
+              const startDate = new Date(slot.start);
+              const endDate = new Date(slot.end);
+              // Handle multi-day events
+              let currentDate = new Date(startDate);
+              currentDate.setHours(0, 0, 0, 0);
+              while(currentDate <= endDate){
+                busyDays.add(currentDate.toISOString().split('T')[0]);
+                currentDate.setDate(currentDate.getDate() + 1);
+              }
             });
-            
-            console.log(`Found ${busyDays.length} busy days: ${busyDays.join(', ')}`);
-            
+            // Create a simpler format for the front-end
+            // Filter out days that are completely booked
+            const daysWithNoAvailability = Array.from(busyDays).filter((dayString)=>{
+              const day = new Date(dayString);
+              // Check if there are any busy slots that cover the entire business day
+              // (9am to 5pm) for this particular day
+              const dayStart = new Date(day);
+              dayStart.setHours(9, 0, 0, 0);
+              const dayEnd = new Date(day);
+              dayEnd.setHours(17, 0, 0, 0);
+              // Count events that overlap with the business hours
+              let allDayBooked = false;
+              // Check if there are any slots that span the entire business day
+              // This is a simplified approach - in reality you'd want to check
+              // if there's any free time between slots
+              for (const slot of busySlots){
+                const slotStart = new Date(slot.start);
+                const slotEnd = new Date(slot.end);
+                // If a slot covers the full business day, mark as fully booked
+                if (slotStart <= dayStart && slotEnd >= dayEnd) {
+                  allDayBooked = true;
+                  break;
+                }
+              }
+              return allDayBooked;
+            });
+            console.log(`Found ${daysWithNoAvailability.length} fully booked days`);
             return new Response(JSON.stringify({
-              busyDays
+              busyDays: daysWithNoAvailability,
+              // Return only YYYY-MM-DD strings for day-level privacy
+              month: timeMin.getMonth(),
+              year: timeMin.getFullYear()
             }), {
               headers: corsHeaders
             });
           } catch (error) {
             console.error('Error fetching busy days:', error);
             return new Response(JSON.stringify({
-              error: `Failed to fetch busy days: ${error.message}`,
-              details: error.stack
+              error: `Failed to fetch busy days: ${error.message || 'Unknown error'}`,
+              stack: error.stack
             }), {
               status: 500,
               headers: corsHeaders
