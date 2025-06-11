@@ -219,49 +219,35 @@ export function SchedulingCalendar({ salesRepEmail, salesRep, leadDetails, onBoo
       console.log("User timezone:", userTimeZone);
       console.log("Selected slot:", selectedSlot);
       
-      // Parse time in format "HH:MM" - handle both 12 and 24 hour formats
-      const parseTimeString = (timeStr: string) => {
-        // First, remove any AM/PM and spaces
-        const cleanTimeStr = timeStr.replace(/\s*(AM|PM)\s*/i, '').trim();
+      // Since the server now returns ISO strings, we can use them directly
+      // The selectedSlot.startTime and endTime are already in ISO format
+      let startTime: Date;
+      let endTime: Date;
+      
+      try {
+        // Parse the ISO strings directly
+        startTime = new Date(selectedSlot.startTime);
+        endTime = new Date(selectedSlot.endTime);
         
-        // Split hours and minutes
-        const [hours, minutes] = cleanTimeStr.split(':').map(Number);
-        
-        if (isNaN(hours) || isNaN(minutes)) {
-          throw new Error(`Invalid time format: ${timeStr}`);
+        // Validate the parsed dates
+        if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+          throw new Error("Invalid date objects created from slot times");
         }
         
-        return { hours, minutes };
-      };
-      
-      // Parse start and end times
-      const startTimeParts = parseTimeString(selectedSlot.startTime);
-      const endTimeParts = parseTimeString(selectedSlot.endTime);
-      
-      // Create new date objects with proper timezone handling
-      // Use the selected date's year, month, and day in user's timezone
-      const startTime = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 
-                                startTimeParts.hours, startTimeParts.minutes, 0, 0);
-      
-      const endTime = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 
-                              endTimeParts.hours, endTimeParts.minutes, 0, 0);
-      
-      // Manually check if the date objects are valid
-      if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
-        console.error("Invalid date created:", { 
-          startTimeParts, 
-          endTimeParts,
-          startTimeValid: !isNaN(startTime.getTime()),
-          endTimeValid: !isNaN(endTime.getTime())
+        console.log("Parsed start time (UTC):", startTime.toISOString());
+        console.log("Parsed end time (UTC):", endTime.toISOString());
+        console.log("Start time (user timezone):", startTime.toString());
+        console.log("End time (user timezone):", endTime.toString());
+        
+      } catch (parseError) {
+        console.error("Error parsing slot times:", parseError);
+        console.error("Slot data:", { 
+          startTime: selectedSlot.startTime, 
+          endTime: selectedSlot.endTime 
         });
-        throw new Error("Invalid date or time values");
+        throw new Error(`Failed to parse slot times: ${parseError.message}`);
       }
       
-      console.log("Start time (user timezone):", startTime.toString());
-      console.log("Start time (UTC):", startTime.toISOString());
-      console.log("End time (user timezone):", endTime.toString());
-      console.log("End time (UTC):", endTime.toISOString());
-
       // Prepare booking details
       const bookingName = leadDetails ? 
         `${leadDetails.firstName} ${leadDetails.lastName}` : 
