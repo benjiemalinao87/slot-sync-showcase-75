@@ -214,7 +214,7 @@ serve(async (req)=>{
             // Generate available slots (let client handle timezone-specific business hours)
             const slots = [];
             
-            // Create slots every 30 minutes from 6 AM to 8 PM UTC
+            // Create slots every 60 minutes from 6 AM to 8 PM UTC
             // This gives a wide range that can be filtered client-side based on user's timezone
             let currentTime = new Date(targetDate);
             currentTime.setUTCHours(6, 0, 0, 0); // Start at 6 AM UTC
@@ -224,7 +224,7 @@ serve(async (req)=>{
             
             while (currentTime < endOfDay) {
               const slotStart = new Date(currentTime);
-              const slotEnd = new Date(currentTime.getTime() + 30 * 60000); // 30 minutes later
+              const slotEnd = new Date(currentTime.getTime() + 60 * 60000); // 60 minutes later (1 hour)
               
               // Check if this slot conflicts with any existing events
               const isConflict = events.some(event => {
@@ -242,13 +242,13 @@ serve(async (req)=>{
                 time: slotStart.toLocaleTimeString('en-US', { 
                   hour: 'numeric', 
                   minute: '2-digit',
-                  hour12: false,
+                  hour12: true, // Changed to 12-hour format
                   timeZone: 'UTC'
                 })
               });
               
-              // Move to next 30-minute slot
-              currentTime.setUTCMinutes(currentTime.getUTCMinutes() + 30);
+              // Move to next 60-minute slot
+              currentTime.setUTCMinutes(currentTime.getUTCMinutes() + 60);
             }
             
             console.log(`Generated ${slots.length} time slots`);

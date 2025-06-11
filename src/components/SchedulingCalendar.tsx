@@ -275,7 +275,7 @@ export function SchedulingCalendar({ salesRepEmail, salesRep, leadDetails, onBoo
       const timeStr = startTime.toLocaleTimeString([], { 
         hour: 'numeric', 
         minute: '2-digit',
-        hour12: false,
+        hour12: true,
         timeZone: userTimeZone
       });
 

@@ -54,14 +54,14 @@ export function formatTimeInTimezone(
   const startFormatted = start.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
-    hour12: false,
+    hour12: true,
     timeZone: timezone
   });
   
   const endFormatted = end.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit', 
-    hour12: false,
+    hour12: true,
     timeZone: timezone
   });
   

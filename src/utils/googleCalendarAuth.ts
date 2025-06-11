@@ -120,7 +120,7 @@ export const bookAppointment = async (
     const timeStr = startDate.toLocaleTimeString([], { 
       hour: 'numeric', 
       minute: '2-digit',
-      hour12: false,
+      hour12: true,
       timeZone: userTimeZone
     });
 
