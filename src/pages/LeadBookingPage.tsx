@@ -325,7 +325,7 @@ const LeadBookingPage = () => {
           isOpen={isBookingDialogOpen}
           onClose={() => setIsBookingDialogOpen(false)}
           onSubmit={handleFindDesigner}
-          buttonText="Find available solar designer"
+          buttonText="Find Available System Designer"
           initialValues={initialFormValues}
         />
       </main>
