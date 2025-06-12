@@ -1138,3 +1138,119 @@
 - [ ] Support for different business hours per sales rep
 - [ ] Handle daylight saving time transitions
 - [ ] Add timezone abbreviation display (EST, PST, etc.)
+
+## 1. Timezone Handling in Calendar Applications
+
+### Problem
+Users reported that 2:00 PM bookings were showing as 2:00 AM in confirmations, indicating serious timezone handling issues.
+
+### Root Causes Identified
+1. **Local timezone assumptions**: Code assumed all times were in server timezone
+2. **Business hours hardcoded**: Server timezone hardcoded instead of using user's timezone
+3. **Inconsistent date handling**: Using `setHours()` method instead of proper Date constructor
+4. **Missing timezone context**: No timezone information passed between client and server
+
+### Solutions Implemented
+
+#### 1. Fixed Date Construction
+**Wrong approach:**
+```javascript
+const startTime = new Date();
+startTime.setHours(hours, minutes, 0, 0);
+```
+
+**Correct approach:**
+```javascript
+const startTime = new Date(year, month, date, hours, minutes, 0, 0);
+```
+
+#### 2. Enhanced Timezone Handling
+- Added timezone detection: `Intl.DateTimeFormat().resolvedOptions().timeZone`
+- Pass timezone info to all booking functions
+- Use timezone-aware formatting for event titles
+- Created `timezoneHelper.ts` utility for consistent timezone operations
+
+#### 3. Server-Side Improvements
+- Modified Edge Function to return broader time ranges (6 AM - 8 PM UTC)
+- Enhanced event fetching using `events.list` API
+- Improved busy days logic with proper UTC operations
+
+#### 4. Better Error Handling and Logging
+- Added comprehensive logging with timezone information
+- Enhanced error messages with context
+- Timezone validation before processing
+
+### Key Takeaways
+1. **Always be explicit about timezones** - never assume local or server timezone
+2. **Use proper Date constructors** - avoid `setHours()` for date manipulation
+3. **Pass timezone context** between client and server
+4. **Test with different timezones** to catch edge cases
+5. **Use UTC for server operations** and convert to user timezone for display
+
+### Technical Implementation Details
+- **Client timezone detection**: `Intl.DateTimeFormat().resolvedOptions().timeZone`
+- **Business hours filtering**: Created helper functions for timezone-aware filtering
+- **Event title formatting**: Include timezone info for clarity
+- **Date serialization**: Always use ISO strings for date transmission
+
+### Future Improvements
+1. Add timezone selector for users in different regions
+2. Implement daylight saving time handling
+3. Add business hours configuration per sales rep
+4. Consider using libraries like `date-fns-tz` for complex timezone operations
+
+## 2. Server-Client Data Format Synchronization
+
+### Problem
+After updating the server to return ISO strings for time slots, the client was still trying to parse them as simple time strings (e.g., "16:00"), causing "Invalid time format: 2025-06-29T06:00:00.000Z" errors during booking.
+
+### Root Cause
+**Data format mismatch**: Server began returning ISO strings (`2025-06-29T06:00:00.000Z`) but client parsing logic still expected simple time format (`"16:00"`).
+
+### Solution Implemented
+**Before (expecting simple time strings):**
+```javascript
+const parseTimeString = (timeStr: string) => {
+  const cleanTimeStr = timeStr.replace(/\s*(AM|PM)\s*/i, '').trim();
+  const [hours, minutes] = cleanTimeStr.split(':').map(Number);
+  return { hours, minutes };
+};
+
+const startTime = new Date(year, month, date, startTimeParts.hours, startTimeParts.minutes);
+```
+
+**After (handling ISO strings directly):**
+```javascript
+try {
+  // Parse the ISO strings directly
+  const startTime = new Date(selectedSlot.startTime);
+  const endTime = new Date(selectedSlot.endTime);
+  
+  // Validate the parsed dates
+  if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+    throw new Error("Invalid date objects created from slot times");
+  }
+} catch (parseError) {
+  throw new Error(`Failed to parse slot times: ${parseError.message}`);
+}
+```
+
+### Key Takeaways
+1. **Synchronize data formats** between server and client when making changes
+2. **Handle format changes gracefully** with proper error handling
+3. **Use ISO strings for date/time transmission** - they're standardized and timezone-aware
+4. **Add validation** for parsed date objects to catch invalid data early
+5. **Test data flow end-to-end** after making format changes
+
+### Best Practices for Data Format Changes
+1. **Version your APIs** or use feature flags when changing data formats
+2. **Add migration logic** to handle both old and new formats temporarily
+3. **Use TypeScript interfaces** to catch format mismatches at compile time
+4. **Add comprehensive logging** during format transitions
+5. **Test with real data** from the server to ensure compatibility
+
+### Technical Implementation
+- **ISO string validation**: Check `isNaN(date.getTime())` after parsing
+- **Error context**: Include original slot data in error messages for debugging
+- **Fallback handling**: Graceful degradation when parsing fails
+- **Type safety**: Use TypeScript to enforce expected data formats

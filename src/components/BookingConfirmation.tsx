@@ -116,18 +116,7 @@ export function BookingConfirmation({ bookingDetails: propBookingDetails }: Book
   
   const { date, startTime, endTime, rep } = bookingDetails;
   
-  const handleAddToCalendar = () => {
-    const baseUrl = 'https://calendar.google.com/calendar/r/eventedit';
-    const params = new URLSearchParams({
-      text: `Meeting with ${rep.name}`,
-      dates: `${format(startTime, "yyyyMMdd'T'HHmmss")}/${format(endTime, "yyyyMMdd'T'HHmmss")}`,
-      details: `Your appointment with ${rep.name}`,
-      location: 'Online',
-      add: rep.email
-    });
-    
-    window.open(`${baseUrl}?${params.toString()}`, '_blank');
-  };
+
   
   return (
     <div className="container mx-auto px-4 py-12 max-w-4xl relative">
@@ -232,17 +221,10 @@ export function BookingConfirmation({ bookingDetails: propBookingDetails }: Book
           
           <div className="pt-6 mt-6 border-t border-gray-100">
             <p className="text-center text-gray-600 mb-6">
-              We're looking forward to helping you discover the benefits of solar energy! Add this appointment to your calendar so you don't forget.
+              We're looking forward to helping you discover the benefits of solar energy! Your appointment has been successfully booked.
             </p>
             
-            <div className="flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-4 justify-center">
-              <Button 
-                onClick={handleAddToCalendar} 
-                className="w-full md:w-auto bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white rounded-lg py-6 text-base shadow-md transition-all duration-200"
-              >
-                <Calendar className="h-5 w-5 mr-2" /> Add to Google Calendar
-              </Button>
-              
+            <div className="flex justify-center">
               <Button 
                 variant="outline" 
                 onClick={() => navigate('/')} 
