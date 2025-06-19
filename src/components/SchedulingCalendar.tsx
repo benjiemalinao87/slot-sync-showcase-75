@@ -320,6 +320,7 @@ export function SchedulingCalendar({ salesRepEmail, salesRep, leadDetails, onBoo
           customerEmail: bookingEmail,
           customerPhone: formattedPhone,
           notes: bookingNotes,
+          interest: leadDetails?.interest || "Not specified",
           salesRepName: salesRep?.name || "Unknown",
           salesRepEmail: salesRep?.email || calendarIdToUse || "Unknown",
           slot: selectedSlot

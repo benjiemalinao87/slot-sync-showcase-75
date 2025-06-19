@@ -135,49 +135,41 @@ export const BookingDialog = ({
       case 1:
         return (
           <div className="space-y-5">
-            <div className="flex justify-between items-center mb-4">
-              <DialogTitle>Book Appointment</DialogTitle>
-              <div className="flex gap-2">
-                {leadStatus && (
-                  <Badge 
-                    variant={leadStatus.toLowerCase() as any} 
-                    className="capitalize"
-                  >
-                    {leadStatus}
-                  </Badge>
-                )}
-                {leadSource && (
-                  <Badge 
-                    variant="outline"
-                    className="capitalize bg-blue-50 text-blue-700 border-blue-200"
-                  >
-                    {leadSource}
-                  </Badge>
-                )}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="firstName" className="text-gray-700 font-medium">First Name</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="firstName" className="text-gray-700 font-medium">First Name</Label>
+              <div className="relative">
                 <Input
                   id="firstName"
+                  placeholder="Enter your first name"
                   value={firstName}
                   onChange={e => setFirstName(e.target.value)}
                   required
-                  className="rounded-lg border-gray-200 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 transition-all py-5"
-                  placeholder="Your first name"
+                  className="rounded-lg border-gray-200 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 pl-10 transition-all py-5"
                 />
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="lastName" className="text-gray-700 font-medium">Last Name</Label>
+            </div>
+            
+            <div className="space-y-1.5">
+              <Label htmlFor="lastName" className="text-gray-700 font-medium">Last Name</Label>
+              <div className="relative">
                 <Input
                   id="lastName"
+                  placeholder="Enter your last name"
                   value={lastName}
                   onChange={e => setLastName(e.target.value)}
                   required
-                  className="rounded-lg border-gray-200 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 transition-all py-5"
-                  placeholder="Your last name"
+                  className="rounded-lg border-gray-200 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 pl-10 transition-all py-5"
                 />
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
               </div>
             </div>
           </div>
@@ -191,27 +183,28 @@ export const BookingDialog = ({
                 <Input
                   id="email"
                   type="email"
+                  placeholder="Enter your email address"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   required
                   className="rounded-lg border-gray-200 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 pl-10 transition-all py-5"
-                  placeholder="your.email@example.com"
                 />
                 <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
                   </svg>
                 </div>
               </div>
+              <p className="text-sm text-gray-500 ml-1">We'll use this to send your appointment confirmation</p>
             </div>
             
             <div className="space-y-1.5">
-              <Label htmlFor="phone" className="text-gray-700 font-medium">Phone (with country code)</Label>
+              <Label htmlFor="phone" className="text-gray-700 font-medium">Phone Number</Label>
               <div className="relative">
                 <Input
                   id="phone"
                   type="tel"
-                  placeholder="+1 (555) 000-0000"
+                  placeholder="Enter your phone number"
                   value={phone}
                   onChange={e => setPhone(e.target.value)}
                   required
@@ -223,34 +216,15 @@ export const BookingDialog = ({
                   </svg>
                 </div>
               </div>
+              <p className="text-sm text-gray-500 ml-1">For appointment reminders and updates</p>
             </div>
             
-            <div className="space-y-1.5">
-              <Label htmlFor="city" className="text-gray-700 font-medium">City</Label>
-              <div className="relative">
-                <Input
-                  id="city"
-                  placeholder="Enter your city"
-                  value={city}
-                  onChange={e => setCity(e.target.value)}
-                  className="rounded-lg border-gray-200 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 pl-10 transition-all py-5"
-                />
-                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </div>
-              </div>
-              <p className="text-sm text-gray-500 ml-1">Helps us match you with a local solar expert</p>
-            </div>
-
             <div className="space-y-1.5">
               <Label htmlFor="address" className="text-gray-700 font-medium">Address</Label>
               <div className="relative">
                 <Input
                   id="address"
-                  placeholder="Enter your street address"
+                  placeholder="Enter your home address"
                   value={address}
                   onChange={e => setAddress(e.target.value)}
                   className="rounded-lg border-gray-200 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 pl-10 transition-all py-5"
@@ -261,7 +235,7 @@ export const BookingDialog = ({
                   </svg>
                 </div>
               </div>
-              <p className="text-sm text-gray-500 ml-1">Your complete street address</p>
+              <p className="text-sm text-gray-500 ml-1">Helps us prepare for your solar assessment</p>
             </div>
           </div>
         );
@@ -269,7 +243,7 @@ export const BookingDialog = ({
         return (
           <div className="space-y-5">
             <div className="space-y-1.5">
-              <Label htmlFor="interest" className="text-gray-700 font-medium">What interests you about solar?</Label>
+              <Label htmlFor="interest" className="text-gray-700 font-medium">Are you looking for</Label>
               <div className="relative">
                 <select
                   id="interest"

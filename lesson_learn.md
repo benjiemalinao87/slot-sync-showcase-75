@@ -1,5 +1,35 @@
 # Lessons Learned
 
+## UX Improvements
+
+### Remove Add to Google Calendar Button (2024-01-XX)
+**Problem**: After booking completion, users saw an "Add to Google Calendar" button which was redundant since the appointment was already added to the sales rep's calendar automatically.
+
+**Solution**: 
+- Removed the "Add to Google Calendar" button from BookingConfirmation.tsx
+- Updated confirmation message to be more generic and reassuring
+- Simplified the button layout to show only "Return to Home" button
+- Cleaned up unused `handleAddToCalendar` function
+
+**How it was fixed**:
+1. Identified the button location in `src/components/BookingConfirmation.tsx`
+2. Removed the entire Add to Google Calendar button and its associated handler
+3. Updated the confirmation text to remove references to adding to calendar
+4. Simplified the button container layout from flex-row to centered single button
+5. Tested build to ensure no TypeScript errors
+6. Committed and pushed changes
+
+**Why this approach**:
+- Appointments are already automatically added to the sales rep's calendar during booking
+- The customer doesn't need to manually add the appointment to their own calendar
+- Reduces confusion and simplifies the user experience
+- Maintains the core functionality while removing redundant features
+
+**What not to do**:
+- Don't leave unused functions in the code (always clean up)
+- Don't assume users need manual calendar management when it's automated
+- Don't overcomplicate the confirmation flow with unnecessary options
+
 ## Calendar Integration Implementation
 
 ### What Worked Well
